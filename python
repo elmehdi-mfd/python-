@@ -1,0 +1,4004 @@
+# -*- coding: utf-8 -*-
+import os
+import sqlite3
+from datetime import datetime
+import customtkinter as ctk
+from CTkMessagebox import CTkMessagebox
+from tkinter import ttk, filedialog
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from datetime import datetime
+import os
+from datetime import datetime
+import pytz
+import bcrypt
+import datetime
+import logging
+from datetime import datetime
+import pandas as pd
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from PIL import Image, ImageTk
+import os
+from tkinter import filedialog
+import json
+
+
+import sqlite3
+import customtkinter as ctk
+import bcrypt
+import logging
+from datetime import datetime
+import pytz
+
+class LoginWindow:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Centre de Soutien - Login")
+        self.root.geometry("800x600")
+        
+        # Configuration de l'apparence
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("blue")
+        
+        # Variables
+        self.email_var = ctk.StringVar()
+        self.password_var = ctk.StringVar()
+        
+        # Créer l'interface
+        self.create_login_interface()
+        
+    def create_login_interface(self):
+        # Frame principal avec padding augmenté
+        main_frame = ctk.CTkFrame(self.root)
+        main_frame.pack(fill="both", expand=True, padx=40, pady=40)
+        
+        # Logo ou titre
+        ctk.CTkLabel(
+            main_frame,
+            text="Centre de Soutien",
+            font=("Arial", 36, "bold")
+        ).pack(pady=30)
+        
+        # Frame pour le formulaire
+        form_frame = ctk.CTkFrame(main_frame)
+        form_frame.pack(fill="x", padx=40, pady=30)
+        
+        # Champ email
+        ctk.CTkLabel(
+            form_frame,
+            text="Email",
+            font=("Arial", 14)
+        ).pack(anchor="w", pady=(20, 0))
+        
+        email_entry = ctk.CTkEntry(
+            form_frame,
+            textvariable=self.email_var,
+            width=400,
+            height=40,
+            placeholder_text="Entrez votre email"
+        )
+        email_entry.pack(pady=(5, 15))
+        
+        # Champ mot de passe
+        ctk.CTkLabel(
+            form_frame,
+            text="Mot de passe",
+            font=("Arial", 14)
+        ).pack(anchor="w", pady=(20, 0))
+        
+        password_entry = ctk.CTkEntry(
+            form_frame,
+            textvariable=self.password_var,
+            width=400,
+            height=40,
+            show="•",
+            placeholder_text="Entrez votre mot de passe"
+        )
+        password_entry.pack(pady=(5, 25))
+        
+        # Bouton de connexion
+        login_button = ctk.CTkButton(
+            form_frame,
+            text="Se connecter",
+            command=self.login,
+            width=300,
+            height=50,
+            font=("Arial", 16, "bold")
+        )
+        login_button.pack(pady=30)
+        
+        # Message d'erreur
+        self.error_label = ctk.CTkLabel(
+            form_frame,
+            text="",
+            text_color="red",
+            font=("Arial", 14)
+        )
+        self.error_label.pack(pady=15)
+
+    def show_error(self, message):
+        """Affiche un message d'erreur"""
+        self.error_label.configure(text=message)
+        self.error_label.pack()
+        self.root.after(3000, lambda: self.error_label.configure(text=""))
+
+    def verify_credentials(self, email, password):
+        """Vérifie les identifiants dans la base de données"""
+        try:
+            conn = sqlite3.connect('centre_soutien.db')
+            cursor = conn.cursor()
+            
+            print(f"\nEmail saisi: {email}")
+            print(f"Current Date and Time (UTC): {datetime.now(pytz.UTC).strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"Current User's Login: elmehdi-mfd")
+            
+            # Vérifier si l'utilisateur existe
+            cursor.execute("SELECT * FROM utilisateurs WHERE email = ?", (email,))
+            user = cursor.fetchone()
+            
+            if user:
+                # Le mot de passe est déjà hashé dans la base de données
+                stored_password = user[4]
+                if isinstance(stored_password, str):
+                    stored_password = stored_password.encode('utf-8')
+                
+                if bcrypt.checkpw(password.encode('utf-8'), stored_password):
+                    self.current_user = {
+                        'id': user[0],
+                        'nom': user[1],
+                        'prenom': user[2],
+                        'email': user[3],
+                        'role': user[5],
+                        'full_name': f"{user[1]} {user[2]}"
+                    }
+                    return True
+            return False
+            
+        except sqlite3.Error as e:
+            print(f"Erreur de base de données: {e}")
+            return False
+        finally:
+            if conn:
+                conn.close()
+
+    def login(self):
+        """Gère la tentative de connexion"""
+        email = self.email_var.get().strip()
+        password = self.password_var.get().strip()
+        
+        if not email or not password:
+            self.show_error("Veuillez remplir tous les champs")
+            return
+        
+        if self.verify_credentials(email, password):
+            print("Connexion réussie!")
+            self.successful_login(email)
+        else:
+            print("Échec de la connexion")
+            self.show_error("Email ou mot de passe incorrect")
+
+    def successful_login(self, email):
+        """Gère la connexion réussie"""
+        try:
+            root = ctk.CTk()
+            app = SchoolFeeManagementApp(root, self.current_user)  # Utilisez directement la classe
+            self.root.destroy()
+            root.mainloop()
+        except Exception as e:
+            print(f"Erreur lors du démarrage de l'application: {e}")
+            self.show_error("Erreur lors du démarrage de l'application")
+			
+class SchoolFeeManagementApp:
+    def __init__(self, root, user_info):
+        self.root = root
+        self.user_info = user_info
+        self.user_email = user_info['email']
+        self.user_role = user_info['role']
+        self.user_full_name = user_info['full_name']
+        
+        # Configuration de la fenêtre principale
+        self.root.title(f"Centre de Soutien - {self.user_full_name}")
+        self.root.geometry("1300x850")
+        # Gérer la fermeture de la fenêtre
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        # Configuration de l'apparence
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("blue")
+        
+        # Initialisation des variables
+        self.sort_reverse = False
+        self.current_school_name = None
+        self.primary_amount = None
+        self.payment_status_thread = None
+        self.stop_payment_tracking = False
+        
+        # Connexion à la base de données
+        self.setup_database()
+        
+        # Création de l'interface
+        self.create_main_interface()
+		
+    def setup_database(self):
+        """Initialise la connexion à la base de données"""
+        try:
+            self.conn = sqlite3.connect('centre_soutien.db')
+            self.cursor = self.conn.cursor()
+            
+            # Vérifier si les tables nécessaires existent
+            self.create_required_tables()
+            
+        except sqlite3.Error as e:
+            print(f"Erreur lors de la configuration de la base de données: {e}")
+            raise	
+			
+			
+    def create_required_tables(self):
+        """Crée les tables nécessaires si elles n'existent pas"""
+        try:
+            # Table pour la configuration des frais
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS FeeConfiguration (
+                    id INTEGER PRIMARY KEY,
+                    level TEXT,
+                    amount REAL
+                )
+            ''')
+
+            # Table pour les matières
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Subjects (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    level TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    fee REAL NOT NULL,
+                    UNIQUE(level, name)
+                )
+            ''')
+
+            # Table pour les étudiants
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Students (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    surname TEXT NOT NULL,
+                    birth_date TEXT,
+                    gender TEXT,
+                    address TEXT,
+                    class TEXT NOT NULL,
+                    phone_number TEXT,
+                    parent_name TEXT,
+                    parent_phone TEXT,
+                    email TEXT,
+                    registration_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                    photo_path TEXT,
+                    subjects TEXT,
+                    total_fee REAL DEFAULT 0,
+                    total_paid REAL DEFAULT 0,
+                    last_payment_date TEXT,
+                    payment_completed INTEGER DEFAULT 0
+                )
+            ''')
+
+            # Table pour les paiements
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Payments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    student_id INTEGER,
+                    amount REAL NOT NULL,
+                    payment_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                    payment_method TEXT,
+                    notes TEXT,
+                    FOREIGN KEY(student_id) REFERENCES Students(id)
+                )
+            ''')
+
+            self.conn.commit()
+            print("Tables créées avec succès")
+
+        except sqlite3.Error as e:
+            print(f"Erreur lors de la création des tables: {e}")
+            raise
+			
+    def logout(self):
+        """Gère la déconnexion de l'utilisateur"""
+        try:
+            # Nettoyer les tooltips
+            for widget in self.root.winfo_children():
+                if hasattr(widget, 'tooltip'):
+                    self._hide_tooltip(widget)
+    
+            # Fermer proprement la fenêtre actuelle
+            if hasattr(self, 'school_config_tabview'):
+                self.school_config_tabview.destroy()
+            
+            if hasattr(self, 'main_frame'):
+                self.main_frame.destroy()
+    
+            # Fermer la connexion à la base de données
+            if hasattr(self, 'conn'):
+                self.conn.close()
+    
+            # Détruire la fenêtre principale
+            self.root.destroy()
+    
+            # Créer une nouvelle fenêtre de connexion
+            new_root = ctk.CTk()
+            LoginWindow(new_root)
+            new_root.mainloop()
+    
+        except Exception as e:
+            print(f"Erreur lors de la déconnexion: {e}")
+    
+    def on_closing(self):
+        """Gère la fermeture de l'application"""
+        try:
+            # Nettoyer les tooltips
+            for widget in self.root.winfo_children():
+                if hasattr(widget, 'tooltip'):
+                    self._hide_tooltip(widget)
+    
+            # Fermer proprement les composants
+            if hasattr(self, 'school_config_tabview'):
+                self.school_config_tabview.destroy()
+    
+            if hasattr(self, 'main_frame'):
+                self.main_frame.destroy()
+    
+            # Fermer la connexion à la base de données
+            if hasattr(self, 'conn'):
+                self.conn.close()
+    
+            # Fermer l'application
+            self.root.quit()
+            self.root.destroy()
+    
+        except Exception as e:
+            print(f"Erreur lors de la fermeture: {e}")
+            self.root.destroy()
+		
+		
+    def create_main_interface(self):
+        """Crée l'interface principale de l'application"""
+        # Frame principal
+        self.main_frame = ctk.CTkFrame(self.root)
+        self.main_frame.pack(fill="both", expand=True)
+        
+       # Frame principal avec une hauteur fixe très réduite
+        header_frame = ctk.CTkFrame(self.root, height=35)
+        header_frame.pack(fill="x", padx=2, pady=(2,0))
+        header_frame.pack_propagate(False)  # Empêche le frame de s'agrandir
+        
+        # Frame pour le nom d'utilisateur (à gauche)
+        user_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        user_frame.pack(side="left", padx=5)
+        
+        # Icône utilisateur et nom (plus petit)
+        ctk.CTkLabel(
+            user_frame,
+            text="👤",  # Icône utilisateur
+            font=("Arial", 12)  # Taille de police réduite
+        ).pack(side="left")
+        
+        ctk.CTkLabel(
+            user_frame,
+            text=f"{self.user_full_name}",
+            font=("Arial", 12)  # Taille de police réduite
+        ).pack(side="left", padx=5)
+        
+        # Bouton de déconnexion (plus petit)
+        logout_button = ctk.CTkButton(
+            header_frame,
+            text="Déconnexion",
+            command=self.logout,
+            width=80,  # Largeur réduite
+            height=24,  # Hauteur réduite
+            font=("Arial", 11),  # Police plus petite
+            fg_color="#FF5252",  # Rouge pour la déconnexion
+            hover_color="#FF1744"  # Rouge plus foncé au survol
+        )
+        logout_button.pack(side="right", padx=5)
+		
+        # Frame principale
+        self.main_frame = ctk.CTkFrame(self.root)
+        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Tabview
+        self.tabview = ctk.CTkTabview(self.main_frame)
+        self.tabview.pack(padx=20, pady=20, fill="both", expand=True)
+
+        # Création des onglets
+        tabs = [
+            "Configuration École",
+            "Gestion des Frais",
+            "Inscription Élèves",
+            "Suivi des Paiements",
+            "Rapports"
+        ]
+
+        for tab_name in tabs:
+            tab = self.tabview.add(tab_name)
+            self.configure_tab(tab, tab_name)
+
+    def configure_tab(self, tab, tab_name):
+        # Configuration des onglets
+        if tab_name == "Configuration École":
+            self.create_school_config_tab(tab)
+        elif tab_name == "Gestion des Frais":
+            self.create_fee_management_tab(tab)
+        elif tab_name == "Inscription Élèves":
+            self.create_registration_tab(tab)
+        elif tab_name == "Suivi des Paiements":
+            self.create_payment_tracking_tab(tab)
+        elif tab_name == "Rapports":
+            self.create_reports_tab(tab)	
+
+    def create_school_config_tab(self, tab):
+        """Configuration de l'école avec navigation"""
+        
+        # === TITRE PRINCIPAL ===
+        self._create_header(tab)
+        
+        # === BARRE DE NAVIGATION ===
+        self.school_config_tabview = ctk.CTkTabview(tab)
+        self.school_config_tabview.pack(padx=20, pady=(0, 20), fill="both", expand=True)
+        
+        # Création des onglets
+        tabs = {
+            "Informations Générales": self._create_general_info_tab,
+            "Paramètres Avancés": self._create_advanced_settings_tab,
+            "Paramètres de Notifications": self._create_notifications_tab
+        }
+        
+        # Ajout des onglets
+        for tab_name, create_func in tabs.items():
+            tab_frame = self.school_config_tabview.add(tab_name)
+            create_func(tab_frame)
+        
+        # === BOUTONS D'ACTION ===
+        self.create_action_buttons(tab)
+    
+    def _create_header(self, parent):
+        """Crée l'en-tête de la configuration"""
+        header_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        header_frame.pack(fill="x", padx=20, pady=20)
+        
+        # Titre principal
+        ctk.CTkLabel(
+            header_frame,
+            text="Configuration de l'École",
+            font=("Arial", 24, "bold")
+        ).pack(side="left")
+        
+        # Date de dernière modification
+        self.last_modified_label = ctk.CTkLabel(
+            header_frame,
+            text="Dernière modification: Jamais",
+            font=("Arial", 12)
+        )
+        self.last_modified_label.pack(side="right")
+    
+    def _create_general_info_tab(self, tab):
+        """Crée l'onglet des informations générales"""
+        # Frame principal
+        main_frame = ctk.CTkScrollableFrame(tab)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Informations de l'école
+        self.school_info = {}
+        fields = [
+            ("name", "Nom de l'École*", "entry"),
+            ("address", "Adresse*", "entry"),
+            ("phone", "Téléphone*", "entry"),
+            ("email", "Email*", "entry"),
+            ("website", "Site Web", "entry"),
+            ("director", "Directeur*", "entry"),
+            ("description", "Description", "text"),
+            ("academic_year", "Année Académique*", "entry")
+        ]
+        
+        for field_id, label, field_type in fields:
+            self._create_field_with_style(main_frame, field_id, label, field_type)
+    
+    def _create_advanced_settings_tab(self, tab):
+        """Crée l'onglet des paramètres avancés"""
+        # Frame principal avec scroll
+        main_frame = ctk.CTkScrollableFrame(tab)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Section des trimestres
+        self._create_term_section(main_frame)
+        
+        # Séparateur
+        self._create_separator(main_frame)
+        
+        # Section des vacances
+        self._create_holiday_section(main_frame)
+    
+    def _create_notifications_tab(self, tab):
+        """Crée l'onglet des paramètres de notification"""
+        # Frame principal avec scroll
+        main_frame = ctk.CTkScrollableFrame(tab)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Options de notification
+        options = [
+            ("payment_reminder", "Rappels de paiement", "Notifications pour les échéances de paiement"),
+            ("late_payment", "Retards de paiement", "Alertes pour les paiements en retard"),
+            ("new_registration", "Nouvelles inscriptions", "Notifications des nouvelles inscriptions"),
+            ("holiday_reminder", "Rappels de vacances", "Notifications des périodes de vacances"),
+            ("exam_reminder", "Rappels d'examens", "Notifications des dates d'examens"),
+            ("attendance_alert", "Alertes d'assiduité", "Notifications des absences")
+        ]
+        
+        self.notification_vars = {}
+        for option_id, label, description in options:
+            self._create_notification_option(main_frame, option_id, label, description)
+    
+    
+    def _create_field_with_style(self, parent, field_id, label, field_type):
+        """Crée un champ stylisé avec validation"""
+        # Frame pour le champ
+        field_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        field_frame.pack(fill="x", pady=5, padx=10)
+        
+        # Label avec indicateur si requis
+        is_required = "*" in label
+        label_color = "#FF6B6B" if is_required else "gray"
+        
+        label_frame = ctk.CTkFrame(field_frame, fg_color="transparent")
+        label_frame.pack(side="left", padx=5)
+        
+        ctk.CTkLabel(
+            label_frame,
+            text=label.replace("*", ""),
+            font=("Arial", 12),
+            text_color=label_color
+        ).pack(side="left")
+    
+        # Création du widget selon le type
+        if field_type == "entry":
+            widget = ctk.CTkEntry(field_frame, width=250)
+            widget.pack(side="right", padx=5)
+            
+            # Ajouter une validation en temps réel
+            widget.bind('<KeyRelease>', lambda e: self._validate_field(field_id, widget))
+            
+        elif field_type == "text":
+            widget = ctk.CTkTextbox(field_frame, height=100, width=250)
+            widget.pack(side="right", padx=5)
+            
+        self.school_info[field_id] = widget
+    
+    def _create_term_section(self, parent):
+        """Crée la section des trimestres avec calendrier"""
+        # Frame pour les trimestres
+        term_frame = ctk.CTkFrame(parent)
+        term_frame.pack(fill="x", pady=10, padx=10)
+        
+        # En-tête
+        header_frame = ctk.CTkFrame(term_frame, fg_color="transparent")
+        header_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(
+            header_frame,
+            text="Périodes Scolaires",
+            font=("Arial", 16, "bold")
+        ).pack(side="left")
+        
+        self.terms_data = []
+        terms = [
+            ("Premier Trimestre", "Septembre", "Décembre"),
+            ("Deuxième Trimestre", "Janvier", "Mars"),
+            ("Troisième Trimestre", "Avril", "Juin")
+        ]
+        
+        for term_name, default_start, default_end in terms:
+            self._create_term_row(term_frame, term_name, default_start, default_end)
+    
+    def _create_term_row(self, parent, term_name, start_hint, end_hint):
+        """Crée une ligne de configuration de trimestre"""
+        term_data = {}
+        row_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        row_frame.pack(fill="x", pady=5)
+        
+        # Label du trimestre
+        ctk.CTkLabel(
+            row_frame,
+            text=f"{term_name}:",
+            font=("Arial", 12),
+            width=150,
+            anchor="w"
+        ).pack(side="left", padx=5)
+        
+        # Frame pour les dates
+        dates_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
+        dates_frame.pack(side="left", fill="x", expand=True)
+        
+        # Date de début
+        term_data['start'] = ctk.CTkEntry(
+            dates_frame,
+            width=120,
+            placeholder_text=start_hint
+        )
+        term_data['start'].pack(side="left", padx=2)
+        
+        # Séparateur visuel
+        ctk.CTkLabel(
+            dates_frame,
+            text="→",
+            font=("Arial", 12)
+        ).pack(side="left", padx=5)
+        
+        # Date de fin
+        term_data['end'] = ctk.CTkEntry(
+            dates_frame,
+            width=120,
+            placeholder_text=end_hint
+        )
+        term_data['end'].pack(side="left", padx=2)
+        
+        self.terms_data.append(term_data)
+        
+    def _create_holiday_section(self, parent):
+        """Crée la section des vacances scolaires avec option de suppression"""
+        holiday_frame = ctk.CTkFrame(parent)
+        holiday_frame.pack(fill="x", pady=10, padx=10)
+        
+        # En-tête avec style
+        header_frame = ctk.CTkFrame(holiday_frame, fg_color="transparent")
+        header_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(
+            header_frame,
+            text="Périodes de Vacances",
+            font=("Arial", 16, "bold")
+        ).pack(side="left")
+        
+        # Frame pour les boutons
+        buttons_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        buttons_frame.pack(side="right")
+        
+        # Bouton supprimer
+        delete_button = ctk.CTkButton(
+            buttons_frame,
+            text="🗑️ Supprimer",
+            command=self.delete_holiday_period,
+            width=100,
+            height=32,
+            fg_color="#E74C3C",
+            hover_color="#C0392B"
+        )
+        delete_button.pack(side="right", padx=5)
+        
+        # Bouton d'ajout stylisé
+        add_button = ctk.CTkButton(
+            buttons_frame,
+            text="+ Ajouter",
+            command=self.add_holiday_period,
+            width=100,
+            height=32,
+            fg_color="#2ECC71",
+            hover_color="#27AE60"
+        )
+        add_button.pack(side="right", padx=5)
+        
+        # Liste des vacances avec style
+        style = ttk.Style()
+        style.configure(
+            "Holiday.Treeview",
+            background="#2b2b2b",
+            foreground="white",
+            fieldbackground="#2b2b2b",
+            rowheight=25
+        )
+        
+        self.holiday_list = ttk.Treeview(
+            holiday_frame,
+            columns=("Nom", "Début", "Fin"),
+            show="headings",
+            style="Holiday.Treeview",
+            height=6
+        )
+        
+        # Configuration des colonnes
+        for col in ("Nom", "Début", "Fin"):
+            self.holiday_list.heading(col, text=col)
+            self.holiday_list.column(col, width=120)
+        
+        self.holiday_list.pack(fill="x", pady=5)
+        
+        # Ajouter un événement de sélection pour activer/désactiver le bouton supprimer
+        self.holiday_list.bind('<<TreeviewSelect>>', self._toggle_delete_button)
+    
+    def delete_holiday_period(self):
+        """Supprime la période de vacances sélectionnée"""
+        selected_item = self.holiday_list.selection()
+        
+        if not selected_item:
+            self._show_error_message("Veuillez sélectionner une période à supprimer")
+            return
+        
+        # Récupérer les informations de la période sélectionnée
+        item_values = self.holiday_list.item(selected_item[0])["values"]
+        period_name = item_values[0]
+        
+        # Demander confirmation
+        if self._show_confirmation_dialog(
+            "Confirmation de suppression",
+            f"Êtes-vous sûr de vouloir supprimer la période '{period_name}' ?"
+        ):
+            # Supprimer la période
+            self.holiday_list.delete(selected_item)
+            self._update_modification_status(False)
+            self._show_success_message(f"La période '{period_name}' a été supprimée")
+    
+    def _toggle_delete_button(self, event):
+        """Active ou désactive le bouton supprimer selon la sélection"""
+        # Vérifier si une ligne est sélectionnée
+        selected = len(self.holiday_list.selection()) > 0
+        
+        # Trouver le bouton supprimer dans la hiérarchie des widgets
+        for widget in self.holiday_list.master.winfo_children():
+            if isinstance(widget, ctk.CTkFrame):  # Header frame
+                for child in widget.winfo_children():
+                    if isinstance(child, ctk.CTkFrame):  # Buttons frame
+                        for button in child.winfo_children():
+                            if isinstance(button, ctk.CTkButton) and "Supprimer" in button._text:
+                                # Mettre à jour l'état du bouton
+                                button.configure(
+                                    state="normal" if selected else "disabled",
+                                    fg_color="#E74C3C" if selected else "#666666"
+                                )
+							
+							
+							
+    
+    def _create_notification_option(self, parent, option_id, label, description):
+        """Crée une option de notification stylisée"""
+        option_frame = ctk.CTkFrame(parent)
+        option_frame.pack(fill="x", pady=5, padx=5)
+        
+        # Frame gauche pour le switch et le label
+        left_frame = ctk.CTkFrame(option_frame, fg_color="transparent")
+        left_frame.pack(side="left", fill="x", expand=True)
+        
+        self.notification_vars[option_id] = ctk.BooleanVar(value=False)
+        
+        # Switch stylisé
+        switch = ctk.CTkSwitch(
+            left_frame,
+            text=label,
+            variable=self.notification_vars[option_id],
+            font=("Arial", 12, "bold")
+        )
+        switch.pack(side="left", padx=10)
+        
+        # Description
+        desc_label = ctk.CTkLabel(
+            left_frame,
+            text=description,
+            font=("Arial", 11),
+            text_color="gray"
+        )
+        desc_label.pack(side="left", padx=10)
+    
+    def _create_separator(self, parent):
+        """Crée un séparateur visuel"""
+        separator = ctk.CTkFrame(parent, height=2, fg_color="gray")
+        separator.pack(fill="x", pady=10, padx=20)
+    
+    def _validate_field(self, field_id, widget):
+        """Valide un champ en temps réel"""
+        value = widget.get()
+        is_valid = True
+        
+        if field_id == "email" and value:
+            is_valid = "@" in value and "." in value
+        elif field_id == "phone" and value:
+            is_valid = value.replace(" ", "").isdigit()
+        
+        # Mise à jour visuelle selon la validation
+        widget.configure(
+            border_color="green" if is_valid else "red"
+        )
+    
+    
+    def create_action_buttons(self, parent):
+        """Crée la barre d'actions avec style et animations"""
+        # Frame principale pour les actions
+        action_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        action_frame.pack(fill="x", pady=20, padx=20)
+        
+        # Frame pour le statut
+        status_frame = ctk.CTkFrame(action_frame, fg_color="transparent")
+        status_frame.pack(fill="x", pady=(0, 10))
+        
+        # Indicateur de modification
+        self.modification_label = ctk.CTkLabel(
+            status_frame,
+            text="✓ Tous les changements sont sauvegardés",
+            font=("Arial", 12),
+            text_color="green"
+        )
+        self.modification_label.pack(side="right")
+    
+        # Frame pour les boutons
+        buttons_frame = ctk.CTkFrame(action_frame, fg_color="transparent")
+        buttons_frame.pack(fill="x")
+        
+        # Configuration des boutons
+        buttons = [
+            {
+                "text": "Sauvegarder",
+                "icon": "💾",
+                "color": "#2ECC71",
+                "hover_color": "#27AE60",
+                "command": self.save_school_config
+            },
+            {
+                "text": "Réinitialiser",
+                "icon": "🔄",
+                "color": "#E74C3C",
+                "hover_color": "#C0392B",
+                "command": self.reset_school_config
+            },
+            {
+                "text": "Exporter",
+                "icon": "📤",
+                "color": "#3498DB",
+                "hover_color": "#2980B9",
+                "command": self.export_school_config
+            },
+            {
+                "text": "Importer",
+                "icon": "📥",
+                "color": "#3498DB",
+                "hover_color": "#2980B9",
+                "command": self.import_school_config
+            }
+        ]
+        
+        # Création des boutons
+        for btn in buttons:
+            self._create_styled_button(buttons_frame, **btn)
+    
+    def _create_styled_button(self, parent, text, icon, color, hover_color, command):
+        button = ctk.CTkButton(
+            parent,
+            text=f"{icon} {text}",
+            command=command,
+            fg_color=color,
+            hover_color=hover_color,
+            width=150,
+            height=35,
+            corner_radius=8,
+            font=("Arial", 13)
+        )
+        button.pack(side="left", padx=10, expand=True)
+			
+			
+    def _show_confirmation_dialog(self, title, message):
+        """Affiche une boîte de dialogue de confirmation personnalisée"""
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title(title)
+        dialog.geometry("400x200")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        result = {"value": False}
+        
+        # Message
+        ctk.CTkLabel(
+            dialog,
+            text=message,
+            font=("Arial", 12),
+            wraplength=350
+        ).pack(pady=20)
+        
+        # Boutons
+        buttons_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        buttons_frame.pack(pady=20)
+        
+        ctk.CTkButton(
+            buttons_frame,
+            text="Confirmer",
+            fg_color="#2ECC71",
+            hover_color="#27AE60",
+            command=lambda: self._close_dialog(dialog, result, True)
+        ).pack(side="left", padx=10)
+        
+        ctk.CTkButton(
+            buttons_frame,
+            text="Annuler",
+            fg_color="#E74C3C",
+            hover_color="#C0392B",
+            command=lambda: self._close_dialog(dialog, result, False)
+        ).pack(side="left", padx=10)
+        
+        dialog.wait_window()
+        return result["value"]
+    
+    def _close_dialog(self, dialog, result, value):
+        """Ferme la boîte de dialogue et définit le résultat"""
+        result["value"] = value
+        dialog.destroy()
+    
+    def _show_success_message(self, message):
+        """Affiche un message de succès stylisé"""
+        CTkMessagebox(
+            title="Succès",
+            message=message,
+            icon="check",
+            font=("Arial", 12),
+            fade_in_duration=300
+        )
+    
+    def _show_error_message(self, message):
+        """Affiche un message d'erreur stylisé"""
+        CTkMessagebox(
+            title="Erreur",
+            message=message,
+            icon="cancel",
+            font=("Arial", 12),
+            fade_in_duration=300
+        )
+    
+    def _update_modification_status(self, is_saved=True):
+        """Met à jour l'indicateur de modification"""
+        if is_saved:
+            self.modification_label.configure(
+                text="✓ Tous les changements sont sauvegardés",
+                text_color="green"
+            )
+        else:
+            self.modification_label.configure(
+                text="⚠ Modifications non sauvegardées",
+                text_color="orange"
+            )
+    
+    def save_school_config(self):
+        """Sauvegarde la configuration avec animations et retours visuels"""
+        try:
+            if not self._validate_all_fields():
+                return
+            
+            # Animation de sauvegarde
+            self.modification_label.configure(text="💾 Sauvegarde en cours...")
+            self.root.update()
+            
+            # Sauvegarde des données
+            self._save_school_data()
+            self._save_terms_data()
+            self._save_holidays_data()
+            self._save_notifications_data()
+            
+            # Mise à jour du statut
+            self._update_modification_status(True)
+            self._show_success_message("Configuration sauvegardée avec succès!")
+            
+        except Exception as e:
+            self._show_error_message(f"Erreur lors de la sauvegarde: {str(e)}")
+
+    def add_holiday_period(self):
+        """Ajoute une nouvelle période de vacances avec une interface améliorée"""
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("Ajouter une période de vacances")
+        dialog.geometry("500x300")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Frame principal
+        main_frame = ctk.CTkFrame(dialog)
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Titre
+        ctk.CTkLabel(
+            main_frame,
+            text="Nouvelle période de vacances",
+            font=("Arial", 16, "bold")
+        ).pack(pady=10)
+        
+        # Variables pour stocker les valeurs
+        fields = {
+            "name": {"label": "Nom de la période", "var": ctk.StringVar()},
+            "start_date": {"label": "Date de début", "var": ctk.StringVar()},
+            "end_date": {"label": "Date de fin", "var": ctk.StringVar()}
+        }
+        
+        # Création des champs
+        for field_id, field_info in fields.items():
+            frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+            frame.pack(fill="x", pady=5)
+            
+            ctk.CTkLabel(
+                frame,
+                text=field_info["label"] + ":",
+                font=("Arial", 12)
+            ).pack(side="left", padx=5)
+            
+            entry = ctk.CTkEntry(frame, width=200, textvariable=field_info["var"])
+            entry.pack(side="right", padx=5)
+            
+            # Ajouter un placeholder
+            entry.insert(0, "")
+            fields[field_id]["entry"] = entry
+        
+        def validate_and_save():
+            """Valide et sauvegarde la période de vacances"""
+            # Vérification des champs requis
+            if not all(field_info["var"].get().strip() for field_info in fields.values()):
+                self._show_error_message("Tous les champs sont requis!")
+                return
+            
+            # Ajout dans le treeview
+            self.holiday_list.insert("", "end", values=(
+                fields["name"]["var"].get(),
+                fields["start_date"]["var"].get(),
+                fields["end_date"]["var"].get()
+            ))
+            
+            dialog.destroy()
+            self._update_modification_status(False)
+        
+        def cancel():
+            """Ferme la fenêtre"""
+            dialog.destroy()
+        
+        # Frame pour les boutons
+        button_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        button_frame.pack(fill="x", pady=20)
+        
+        # Bouton Sauvegarder
+        ctk.CTkButton(
+            button_frame,
+            text="Sauvegarder",
+            command=validate_and_save,
+            fg_color="#2ECC71",
+            hover_color="#27AE60",
+            width=120
+        ).pack(side="left", padx=10, expand=True)
+        
+        # Bouton Annuler
+        ctk.CTkButton(
+            button_frame,
+            text="Annuler",
+            command=cancel,
+            fg_color="#E74C3C",
+            hover_color="#C0392B",
+            width=120
+        ).pack(side="right", padx=10, expand=True)
+        
+        # Centrer la fenêtre
+        dialog.update_idletasks()
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f"{width}x{height}+{x}+{y}")
+	
+	
+    
+    def reset_school_config(self):
+        """Réinitialise la configuration avec confirmation et animation"""
+        # Demander confirmation
+        if not self._show_confirmation_dialog(
+            "Confirmation de réinitialisation",
+            "Êtes-vous sûr de vouloir réinitialiser tous les champs ? Cette action ne peut pas être annulée."
+        ):
+            return
+    
+        try:
+            # Animation de réinitialisation
+            self.modification_label.configure(
+                text="🔄 Réinitialisation en cours...",
+                text_color="orange"
+            )
+            self.root.update()
+            
+            # Réinitialiser les champs d'information de l'école
+            for widget in self.school_info.values():
+                if isinstance(widget, ctk.CTkEntry):
+                    widget.delete(0, 'end')
+                elif isinstance(widget, ctk.CTkTextbox):
+                    widget.delete('1.0', 'end')
+            
+            # Réinitialiser les trimestres
+            for term in self.terms_data:
+                for field in ['start', 'end']:
+                    term[field].delete(0, 'end')
+            
+            # Réinitialiser les vacances
+            for item in self.holiday_list.get_children():
+                self.holiday_list.delete(item)
+            
+            # Réinitialiser les notifications
+            for var in self.notification_vars.values():
+                var.set(False)
+            
+            # Petite pause pour l'animation
+            self.root.after(500)
+            
+            # Mise à jour du statut
+            self._update_modification_status(True)
+            
+            # Message de succès
+            self._show_success_message(
+                "Tous les champs ont été réinitialisés avec succès!"
+            )
+            
+        except Exception as e:
+            self._show_error_message(
+                f"Une erreur s'est produite lors de la réinitialisation: {str(e)}"
+            )
+    
+    def _show_confirmation_dialog(self, title, message):
+        """Affiche une boîte de dialogue de confirmation personnalisée"""
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title(title)
+        dialog.geometry("400x200")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        result = {"value": False}
+        
+        # Message
+        ctk.CTkLabel(
+            dialog,
+            text=message,
+            font=("Arial", 12),
+            wraplength=350
+        ).pack(pady=20)
+        
+        # Boutons
+        buttons_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        buttons_frame.pack(pady=20)
+        
+        ctk.CTkButton(
+            buttons_frame,
+            text="Confirmer",
+            fg_color="#2ECC71",
+            hover_color="#27AE60",
+            command=lambda: self._close_dialog(dialog, result, True)
+        ).pack(side="left", padx=10)
+        
+        ctk.CTkButton(
+            buttons_frame,
+            text="Annuler",
+            fg_color="#E74C3C",
+            hover_color="#C0392B",
+            command=lambda: self._close_dialog(dialog, result, False)
+        ).pack(side="left", padx=10)
+        
+        # Centrer la fenêtre
+        dialog.update_idletasks()
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f"{width}x{height}+{x}+{y}")
+        
+        dialog.wait_window()
+        return result["value"]
+    
+    def _close_dialog(self, dialog, result, value):
+        """Ferme la boîte de dialogue et définit le résultat"""
+        result["value"] = value
+        dialog.destroy()
+	
+    def export_school_config(self):
+        """Exporte la configuration de l'école avec interface améliorée"""
+        try:
+            # Préparer les données à exporter
+            config_data = self._prepare_export_data()
+            
+            # Ouvrir dialogue de sauvegarde
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".json",
+                filetypes=[
+                    ("Fichier JSON", "*.json"),
+                    ("Tous les fichiers", "*.*")
+                ],
+                title="Exporter la configuration",
+                initialfile=f"config_ecole_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
+            
+            if not file_path:
+                return
+            
+            # Animation d'export
+            self.modification_label.configure(
+                text="📤 Exportation en cours...",
+                text_color="orange"
+            )
+            self.root.update()
+            
+            # Sauvegarder les données
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            
+            # Message de succès
+            self._show_success_message(
+                f"Configuration exportée avec succès!\nFichier: {os.path.basename(file_path)}"
+            )
+            
+        except Exception as e:
+            self._show_error_message(f"Erreur lors de l'exportation: {str(e)}")
+    
+    def _prepare_export_data(self):
+        """Prépare les données pour l'exportation"""
+        config_data = {
+            "metadata": {
+                "export_date": datetime.now().isoformat(),
+                "version": "1.0"
+            },
+            "school_info": {},
+            "terms": [],
+            "holidays": [],
+            "notifications": {}
+        }
+        
+        # Informations de l'école
+        for field_id, widget in self.school_info.items():
+            if isinstance(widget, ctk.CTkEntry):
+                value = widget.get()
+            elif isinstance(widget, ctk.CTkTextbox):
+                value = widget.get("1.0", "end-1c")
+            config_data["school_info"][field_id] = value
+        
+        # Données des trimestres
+        for term in self.terms_data:
+            config_data["terms"].append({
+                "start": term["start"].get(),
+                "end": term["end"].get()
+            })
+        
+        # Données des vacances
+        for item in self.holiday_list.get_children():
+            values = self.holiday_list.item(item)["values"]
+            config_data["holidays"].append({
+                "name": values[0],
+                "start_date": values[1],
+                "end_date": values[2]
+            })
+        
+        # Configuration des notifications
+        for option_id, var in self.notification_vars.items():
+            config_data["notifications"][option_id] = var.get()
+        
+        return config_data
+    
+    def import_school_config(self):
+        """Importe la configuration de l'école"""
+        try:
+            # Ouvrir dialogue de sélection de fichier
+            file_path = filedialog.askopenfilename(
+                filetypes=[
+                    ("Fichier JSON", "*.json"),
+                    ("Tous les fichiers", "*.*")
+                ],
+                title="Importer la configuration"
+            )
+            
+            if not file_path:
+                return
+            
+            # Demander confirmation
+            if not self._show_confirmation_dialog(
+                "Confirmation d'importation",
+                "L'importation écrasera la configuration actuelle. Voulez-vous continuer ?"
+            ):
+                return
+            
+            # Animation d'importation
+            self.modification_label.configure(
+                text="📥 Importation en cours...",
+                text_color="orange"
+            )
+            self.root.update()
+            
+            # Charger les données
+            with open(file_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            
+            # Réinitialiser d'abord tous les champs
+            self.reset_school_config()
+            
+            # Appliquer les données importées
+            self._apply_imported_data(config_data)
+            
+            # Message de succès
+            self._show_success_message(
+                "Configuration importée avec succès!"
+            )
+            
+        except json.JSONDecodeError:
+            self._show_error_message("Le fichier sélectionné n'est pas un fichier JSON valide")
+        except Exception as e:
+            self._show_error_message(f"Erreur lors de l'importation: {str(e)}")
+    
+    def _apply_imported_data(self, config_data):
+        """Applique les données importées aux champs"""
+        # Informations de l'école
+        for field_id, value in config_data.get("school_info", {}).items():
+            if field_id in self.school_info:
+                widget = self.school_info[field_id]
+                if isinstance(widget, ctk.CTkEntry):
+                    widget.delete(0, 'end')
+                    widget.insert(0, value)
+                elif isinstance(widget, ctk.CTkTextbox):
+                    widget.delete('1.0', 'end')
+                    widget.insert('1.0', value)
+        
+        # Trimestres
+        for i, term_data in enumerate(config_data.get("terms", [])):
+            if i < len(self.terms_data):
+                self.terms_data[i]["start"].delete(0, 'end')
+                self.terms_data[i]["start"].insert(0, term_data["start"])
+                self.terms_data[i]["end"].delete(0, 'end')
+                self.terms_data[i]["end"].insert(0, term_data["end"])
+        
+        # Vacances
+        for holiday in config_data.get("holidays", []):
+            self.holiday_list.insert("", "end", values=(
+                holiday["name"],
+                holiday["start_date"],
+                holiday["end_date"]
+            ))
+        
+        # Notifications
+        for option_id, enabled in config_data.get("notifications", {}).items():
+            if option_id in self.notification_vars:
+                self.notification_vars[option_id].set(enabled)
+
+
+    def _validate_all_fields(self):
+        """Valide tous les champs du formulaire"""
+        # Dictionnaire pour stocker les erreurs
+        errors = []
+        
+        # Valider les informations de l'école
+        required_fields = {
+            "name": "Nom de l'École",
+            "address": "Adresse",
+            "phone": "Téléphone",
+            "email": "Email",
+            "director": "Directeur",
+            "academic_year": "Année Académique"
+        }
+        
+        for field_id, field_name in required_fields.items():
+            if field_id in self.school_info:
+                widget = self.school_info[field_id]
+                value = widget.get() if isinstance(widget, ctk.CTkEntry) else widget.get("1.0", "end-1c")
+                
+                if not value.strip():
+                    errors.append(f"Le champ '{field_name}' est obligatoire")
+                    widget.configure(border_color="red")
+                else:
+                    widget.configure(border_color="gray")
+                    
+                    # Validations spécifiques
+                    if field_id == "email" and not self._validate_email(value):
+                        errors.append("L'adresse email n'est pas valide")
+                        widget.configure(border_color="red")
+                    
+                    elif field_id == "phone" and not self._validate_phone(value):
+                        errors.append("Le numéro de téléphone n'est pas valide")
+                        widget.configure(border_color="red")
+        
+        # Valider les trimestres
+        for i, term in enumerate(self.terms_data, 1):
+            start_date = term["start"].get().strip()
+            end_date = term["end"].get().strip()
+            
+            if not start_date or not end_date:
+                errors.append(f"Les dates du trimestre {i} sont incomplètes")
+                term["start"].configure(border_color="red" if not start_date else "gray")
+                term["end"].configure(border_color="red" if not end_date else "gray")
+            elif not self._validate_dates(start_date, end_date):
+                errors.append(f"Les dates du trimestre {i} sont invalides")
+                term["start"].configure(border_color="red")
+                term["end"].configure(border_color="red")
+            else:
+                term["start"].configure(border_color="gray")
+                term["end"].configure(border_color="gray")
+        
+        # Valider les périodes de vacances
+        holidays = []
+        for item in self.holiday_list.get_children():
+            values = self.holiday_list.item(item)["values"]
+            if values:
+                holidays.append({
+                    "name": values[0],
+                    "start": values[1],
+                    "end": values[2]
+                })
+        
+        for holiday in holidays:
+            if not all(holiday.values()):
+                errors.append(f"La période de vacances '{holiday['name']}' est incomplète")
+            elif not self._validate_dates(holiday["start"], holiday["end"]):
+                errors.append(f"Les dates de la période '{holiday['name']}' sont invalides")
+        
+        # Afficher les erreurs s'il y en a
+        if errors:
+            error_message = "\n".join([f"• {error}" for error in errors])
+            self._show_error_message(
+                "Veuillez corriger les erreurs suivantes:\n\n" + error_message
+            )
+            return False
+        
+        return True
+    
+    def _validate_email(self, email):
+        """Valide le format de l'adresse email"""
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None
+    
+    def _validate_phone(self, phone):
+        """Valide le format du numéro de téléphone"""
+        # Supprimer les espaces et tirets
+        phone = phone.replace(" ", "").replace("-", "")
+        # Vérifier si c'est un numéro valide (ajustez selon vos besoins)
+        return phone.isdigit() and 8 <= len(phone) <= 15
+    
+    def _validate_dates(self, start_date, end_date):
+        """Valide les dates et leur ordre"""
+        try:
+            # Convertir les dates en objets datetime
+            start = datetime.strptime(start_date, "%d/%m/%Y")
+            end = datetime.strptime(end_date, "%d/%m/%Y")
+            
+            # Vérifier que la date de fin est après la date de début
+            return end >= start
+        except ValueError:
+            return False
+    
+    def _show_validation_error(self, message):
+        """Affiche une erreur de validation avec style"""
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("Erreur de validation")
+        dialog.geometry("500x400")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Frame principal
+        main_frame = ctk.CTkScrollableFrame(dialog)
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Icône d'erreur
+        ctk.CTkLabel(
+            main_frame,
+            text="⚠️",
+            font=("Arial", 48)
+        ).pack(pady=10)
+        
+        # Message d'erreur
+        ctk.CTkLabel(
+            main_frame,
+            text=message,
+            font=("Arial", 12),
+            wraplength=400,
+            justify="left"
+        ).pack(pady=20)
+        
+        # Bouton OK
+        ctk.CTkButton(
+            main_frame,
+            text="OK",
+            command=dialog.destroy,
+            width=100
+        ).pack(pady=10)
+        
+        # Centrer la fenêtre
+        dialog.update_idletasks()
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f"{width}x{height}+{x}+{y}")
+
+
+    def _get_current_user(self):
+        """Récupère les informations de l'utilisateur actuel"""
+        return {
+            'login': 'elmehdi-mfd',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+    
+    def _save_school_data(self):
+        """Sauvegarde les informations de l'école dans la base de données"""
+        try:
+            cursor = self.conn.cursor()
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Récupérer les données du formulaire
+            school_data = {}
+            for field_id, widget in self.school_info.items():
+                if isinstance(widget, ctk.CTkEntry):
+                    school_data[field_id] = widget.get()
+                elif isinstance(widget, ctk.CTkTextbox):
+                    school_data[field_id] = widget.get("1.0", "end-1c")
+            
+            # Mise à jour de la table School
+            cursor.execute("""
+                INSERT OR REPLACE INTO School (
+                    id, name, address, phone, email, website, 
+                    director, logo_path, description, academic_year,
+                    last_updated, modified_by, modified_at
+                ) VALUES (
+                    1, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, 'elmehdi-mfd', ?
+                )
+            """, (
+                school_data.get("name", ""),
+                school_data.get("address", ""),
+                school_data.get("phone", ""),
+                school_data.get("email", ""),
+                school_data.get("website", ""),
+                school_data.get("director", ""),
+                school_data.get("logo_path", ""),
+                school_data.get("description", ""),
+                school_data.get("academic_year", ""),
+                current_time,
+                current_time
+            ))
+            
+            self.conn.commit()
+            
+        except sqlite3.Error as e:
+            raise Exception(f"Erreur lors de la sauvegarde des données de l'école: {str(e)}")
+    
+    def _save_terms_data(self):
+        """Sauvegarde les données des trimestres"""
+        try:
+            cursor = self.conn.cursor()
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Supprimer les anciennes données
+            cursor.execute("DELETE FROM SchoolTerms")
+            
+            # Insérer les nouvelles données
+            for i, term in enumerate(self.terms_data, 1):
+                start_date = term["start"].get().strip()
+                end_date = term["end"].get().strip()
+                
+                if start_date and end_date:  # Ne sauvegarder que si les deux dates sont remplies
+                    cursor.execute("""
+                        INSERT INTO SchoolTerms (
+                            term_number, start_date, end_date,
+                            created_by, created_at, modified_by, modified_at
+                        ) VALUES (?, ?, ?, 'elmehdi-mfd', ?, 'elmehdi-mfd', ?)
+                    """, (i, start_date, end_date, current_time, current_time))
+            
+            self.conn.commit()
+            
+        except sqlite3.Error as e:
+            raise Exception(f"Erreur lors de la sauvegarde des trimestres: {str(e)}")
+    
+    def _save_holidays_data(self):
+        """Sauvegarde les données des vacances"""
+        try:
+            cursor = self.conn.cursor()
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Supprimer les anciennes données
+            cursor.execute("DELETE FROM SchoolHolidays")
+            
+            # Insérer les nouvelles données
+            for item in self.holiday_list.get_children():
+                values = self.holiday_list.item(item)["values"]
+                if values and all(values):  # Vérifier que toutes les valeurs sont présentes
+                    cursor.execute("""
+                        INSERT INTO SchoolHolidays (
+                            name, start_date, end_date,
+                            created_by, created_at, modified_by, modified_at
+                        ) VALUES (?, ?, ?, 'elmehdi-mfd', ?, 'elmehdi-mfd', ?)
+                    """, (*values, current_time, current_time))
+            
+            self.conn.commit()
+            
+        except sqlite3.Error as e:
+            raise Exception(f"Erreur lors de la sauvegarde des vacances: {str(e)}")
+    
+    def _save_notifications_data(self):
+        """Sauvegarde les paramètres de notification"""
+        try:
+            cursor = self.conn.cursor()
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Supprimer les anciennes données
+            cursor.execute("DELETE FROM NotificationSettings")
+            
+            # Insérer les nouvelles données
+            for option_id, var in self.notification_vars.items():
+                cursor.execute("""
+                    INSERT INTO NotificationSettings (
+                        notification_type, enabled,
+                        created_by, created_at, modified_by, modified_at
+                    ) VALUES (?, ?, 'elmehdi-mfd', ?, 'elmehdi-mfd', ?)
+                """, (option_id, var.get(), current_time, current_time))
+            
+            self.conn.commit()
+            
+        except sqlite3.Error as e:
+            raise Exception(f"Erreur lors de la sauvegarde des paramètres de notification: {str(e)}")
+		
+		
+		
+    
+    def _save_terms_data(self):
+        """Sauvegarde les données des trimestres"""
+        try:
+            cursor = self.conn.cursor()
+            
+            # Supprimer les anciennes données
+            cursor.execute("DELETE FROM SchoolTerms")
+            
+            # Insérer les nouvelles données
+            for i, term in enumerate(self.terms_data, 1):
+                start_date = term["start"].get().strip()
+                end_date = term["end"].get().strip()
+                
+                if start_date and end_date:  # Ne sauvegarder que si les deux dates sont remplies
+                    cursor.execute("""
+                        INSERT INTO SchoolTerms (
+                            term_number, start_date, end_date
+                        ) VALUES (?, ?, ?)
+                    """, (i, start_date, end_date))
+            
+            self.conn.commit()
+            
+        except sqlite3.Error as e:
+            raise Exception(f"Erreur lors de la sauvegarde des trimestres: {str(e)}")
+    
+    def _save_holidays_data(self):
+        """Sauvegarde les données des vacances"""
+        try:
+            cursor = self.conn.cursor()
+            
+            # Supprimer les anciennes données
+            cursor.execute("DELETE FROM SchoolHolidays")
+            
+            # Insérer les nouvelles données
+            for item in self.holiday_list.get_children():
+                values = self.holiday_list.item(item)["values"]
+                if values and all(values):  # Vérifier que toutes les valeurs sont présentes
+                    cursor.execute("""
+                        INSERT INTO SchoolHolidays (
+                            name, start_date, end_date
+                        ) VALUES (?, ?, ?)
+                    """, values)
+            
+            self.conn.commit()
+            
+        except sqlite3.Error as e:
+            raise Exception(f"Erreur lors de la sauvegarde des vacances: {str(e)}")
+    
+    def _save_notifications_data(self):
+        """Sauvegarde les paramètres de notification"""
+        try:
+            cursor = self.conn.cursor()
+            
+            # Supprimer les anciennes données
+            cursor.execute("DELETE FROM NotificationSettings")
+            
+            # Insérer les nouvelles données
+            for option_id, var in self.notification_vars.items():
+                cursor.execute("""
+                    INSERT INTO NotificationSettings (
+                        notification_type, enabled
+                    ) VALUES (?, ?)
+                """, (option_id, var.get()))
+            
+            self.conn.commit()
+            
+        except sqlite3.Error as e:
+            raise Exception(f"Erreur lors de la sauvegarde des paramètres de notification: {str(e)}")
+    
+    def _load_saved_data(self):
+        """Charge les données sauvegardées depuis la base de données"""
+        try:
+            cursor = self.conn.cursor()
+            
+            # Charger les informations de l'école
+            cursor.execute("SELECT * FROM School WHERE id = 1")
+            school_data = cursor.fetchone()
+            if school_data:
+                fields = [
+                    "name", "address", "phone", "email", "website",
+                    "director", "logo_path", "description", "academic_year"
+                ]
+                for i, field in enumerate(fields, 1):
+                    if field in self.school_info:
+                        widget = self.school_info[field]
+                        if isinstance(widget, ctk.CTkEntry):
+                            widget.delete(0, 'end')
+                            widget.insert(0, school_data[i] or "")
+                        elif isinstance(widget, ctk.CTkTextbox):
+                            widget.delete('1.0', 'end')
+                            widget.insert('1.0', school_data[i] or "")
+            
+            # Charger les trimestres
+            cursor.execute("SELECT * FROM SchoolTerms ORDER BY term_number")
+            terms_data = cursor.fetchall()
+            for i, term_data in enumerate(terms_data):
+                if i < len(self.terms_data):
+                    self.terms_data[i]["start"].delete(0, 'end')
+                    self.terms_data[i]["start"].insert(0, term_data[1])
+                    self.terms_data[i]["end"].delete(0, 'end')
+                    self.terms_data[i]["end"].insert(0, term_data[2])
+            
+            # Charger les vacances
+            cursor.execute("SELECT name, start_date, end_date FROM SchoolHolidays")
+            for holiday in cursor.fetchall():
+                self.holiday_list.insert("", "end", values=holiday)
+            
+            # Charger les paramètres de notification
+            cursor.execute("SELECT notification_type, enabled FROM NotificationSettings")
+            for notification_type, enabled in cursor.fetchall():
+                if notification_type in self.notification_vars:
+                    self.notification_vars[notification_type].set(enabled)
+                    
+        except sqlite3.Error as e:
+            self._show_error_message(f"Erreur lors du chargement des données: {str(e)}")
+
+
+		
+	
+
+
+
+
+	
+				
+				
+				
+			
+		
+    def create_fee_management_tab(self, tab):
+        # Gestion des frais
+        ctk.CTkLabel(tab, text="Gestion des Frais Scolaires", font=("Arial", 20)).pack(pady=20)
+    
+        self.fee_tabview = ctk.CTkTabview(tab)
+        self.fee_tabview.pack(padx=10, pady=10, fill="both", expand=True)
+    
+        # Onglets pour les différents niveaux
+        levels = ["Primary", "College", "High School"]
+        for level in levels:
+            fee_tab = self.fee_tabview.add(level)
+            self.configure_fee_tab(fee_tab, level)
+    def add_subject(self):
+        level = self.level_var.get()
+        subject_name = self.subject_entry.get().strip()
+        fee = self.fee_var.get()
+        
+        if not subject_name:
+            CTkMessagebox(title="Erreur", message="Veuillez entrer un nom de matière", icon="cancel")
+            return
+        
+        try:
+            fee_float = float(fee)
+            cursor = self.conn.cursor()
+            
+            # Vérifier si la matière existe déjà
+            cursor.execute("""
+                SELECT COUNT(*) FROM Subjects 
+                WHERE level = ? AND name = ?
+            """, (level, subject_name))
+            
+            if cursor.fetchone()[0] > 0:
+                CTkMessagebox(title="Erreur", 
+                             message="Cette matière existe déjà pour ce niveau", 
+                             icon="cancel")
+                return
+        
+            # Insérer la nouvelle matière
+            cursor.execute("""
+                INSERT INTO Subjects (level, name, fee) 
+                VALUES (?, ?, ?)
+            """, (level, subject_name, fee_float))
+            
+            self.conn.commit()
+            
+            print(f"Matière ajoutée avec succès: {level} - {subject_name} - {fee_float}")
+            
+            # Mettre à jour l'affichage
+            self.update_subjects_list()
+            
+            # Vider les champs
+            self.subject_entry.delete(0, 'end')
+            self.fee_var.set("0.0")
+            
+            CTkMessagebox(title="Succès", 
+                         message="Matière ajoutée avec succès", 
+                         icon="check")
+            
+        except ValueError:
+            CTkMessagebox(title="Erreur", 
+                         message="Le montant doit être un nombre valide", 
+                         icon="cancel")
+        except sqlite3.Error as e:
+            CTkMessagebox(title="Erreur", 
+                         message=f"Erreur lors de l'ajout de la matière: {str(e)}", 
+                         icon="cancel")
+    def configure_fee_tab(self, tab, level):
+        if level == "Primary":
+            self.create_primary_fee_tab(tab)
+        elif level == "College":
+            self.create_college_fee_tab(tab)
+        elif level == "High School":
+            self.create_high_school_fee_tab(tab)
+
+    def create_primary_fee_tab(self, tab):
+        # Frais pour le niveau primaire
+        ctk.CTkLabel(tab, text="Frais pour le Niveau Primaire", font=("Arial", 20)).pack(pady=20)
+        
+        ctk.CTkLabel(tab, text="Montant des Frais").pack(pady=5)
+        self.primary_fee_entry = ctk.CTkEntry(tab, width=300)
+        self.primary_fee_entry.pack(pady=5)
+        
+        save_primary_fee_button = ctk.CTkButton(
+            tab,
+            text="Enregistrer Frais",
+            command=self.save_primary_fee
+        )
+        save_primary_fee_button.pack(pady=20)
+
+    def save_primary_fee(self):
+        # Logique de sauvegarde des frais primaires
+        try:
+            self.primary_amount = float(self.primary_fee_entry.get())
+            cursor = self.conn.cursor()
+            cursor.execute("INSERT OR REPLACE INTO FeeConfiguration (level, amount) VALUES (?, ?)", ("Primary", self.primary_amount))
+            self.conn.commit()
+            CTkMessagebox(title="Succès", message="Frais primaires enregistrés", icon="check")
+        except ValueError:
+            CTkMessagebox(title="Erreur", message="Montant invalide", icon="cancel")
+
+    def create_college_fee_tab(self, tab):
+        # Frais pour le niveau collège
+        ctk.CTkLabel(tab, text="Frais pour le Niveau Collège", font=("Arial", 20)).pack(pady=20)
+        
+        ctk.CTkLabel(tab, text="Nom de la Matière").pack(pady=5)
+        self.college_subject_entry = ctk.CTkEntry(tab, width=300)
+        self.college_subject_entry.pack(pady=5)
+        
+        ctk.CTkLabel(tab, text="Frais de la Matière").pack(pady=5)
+        self.college_fee_entry = ctk.CTkEntry(tab, width=300)
+        self.college_fee_entry.pack(pady=5)
+        
+        add_subject_button = ctk.CTkButton(
+            tab,
+            text="Ajouter Matière",
+            command=self.add_college_subject
+        )
+        add_subject_button.pack(pady=20)
+        
+        # Création du Treeview pour le niveau collège
+        self.college_subjects_treeview = self.create_subjects_treeview(tab)
+        self.update_subjects_treeview("College")
+
+    def add_college_subject(self):
+        subject = self.college_subject_entry.get()
+        fee = self.college_fee_entry.get()
+        
+        # Vérification si les champs sont valides
+        if subject and fee:
+            try:
+                fee = float(fee)
+                cursor = self.conn.cursor()
+                # Ajouter la matière et le frais à la base de données
+                cursor.execute("INSERT INTO Subjects (level, name, fee) VALUES (?, ?, ?)", ("College", subject, fee))
+                self.conn.commit()
+                
+                # Mise à jour du Treeview avec la nouvelle matière et frais
+                self.update_subjects_treeview("College")
+                
+                # Réinitialisation des champs
+                self.college_subject_entry.delete(0, 'end')
+                self.college_fee_entry.delete(0, 'end')
+                
+                CTkMessagebox(title="Succès", message="Matière ajoutée avec succès", icon="check")
+            except ValueError:
+                CTkMessagebox(title="Erreur", message="Veuillez entrer un montant valide pour les frais", icon="cancel")
+        else:
+            CTkMessagebox(title="Erreur", message="Veuillez remplir tous les champs", icon="cancel")
+
+    def create_high_school_fee_tab(self, tab):
+        # Frais pour le niveau lycée
+        ctk.CTkLabel(tab, text="Frais pour le Niveau Lycée", font=("Arial", 20)).pack(pady=20)
+        
+        ctk.CTkLabel(tab, text="Nom de la Matière").pack(pady=5)
+        self.high_school_subject_entry = ctk.CTkEntry(tab, width=300)
+        self.high_school_subject_entry.pack(pady=5)
+        
+        ctk.CTkLabel(tab, text="Frais de la Matière").pack(pady=5)
+        self.high_school_fee_entry = ctk.CTkEntry(tab, width=300)
+        self.high_school_fee_entry.pack(pady=5)
+        
+        add_subject_button = ctk.CTkButton(
+            tab,
+            text="Ajouter Matière",
+            command=self.add_high_school_subject
+        )
+        add_subject_button.pack(pady=20)
+        
+        # Création du Treeview pour le niveau lycée
+        self.high_school_subjects_treeview = self.create_subjects_treeview(tab)
+        self.update_subjects_treeview("High School")
+
+    def add_high_school_subject(self):
+        # Ajout d'une matière et de ses frais pour le lycée
+        subject_name = self.high_school_subject_entry.get().strip()  # Récupère le nom de la matière
+        try:
+            fee_amount = float(self.high_school_fee_entry.get())  # Récupère le montant des frais
+            cursor = self.conn.cursor()
+            cursor.execute("INSERT INTO Subjects (level, name, fee) VALUES (?, ?, ?)", ('High School', subject_name, fee_amount))
+            self.conn.commit()
+            self.update_subjects_treeview("High School")  # Met à jour le TreeView pour le lycée avec l'argument "High School"
+            self.high_school_subject_entry.delete(0, 'end')  # Efface le champ de saisie
+            self.high_school_fee_entry.delete(0, 'end')  # Efface le champ de saisie
+            CTkMessagebox(title="Succès", message="Matière ajoutée", icon="check")  # Message de succès
+        except ValueError:
+            CTkMessagebox(title="Erreur", message="Montant invalide", icon="cancel")  # Message d'erreur si le montant est invalide
+
+    def create_subjects_treeview(self, parent):
+        columns = ("Matière", "Frais")
+        treeview = ttk.Treeview(parent, columns=columns, show="headings")
+
+        for col in columns:
+            treeview.heading(col, text=col)
+
+        treeview.pack(padx=20, pady=20, fill="both", expand=True)
+        return treeview
+
+    def update_subjects_treeview(self, level):
+        cursor = self.conn.cursor()
+        
+        # Récupérer les matières et frais selon le niveau
+        cursor.execute("SELECT name, fee FROM Subjects WHERE level = ?", (level,))
+        rows = cursor.fetchall()
+        
+        # Effacement des anciennes données
+        treeview = self.college_subjects_treeview if level == "College" else self.high_school_subjects_treeview
+        for i in treeview.get_children():
+            treeview.delete(i)
+        
+        # Insertion des nouvelles données
+        for row in rows:
+            treeview.insert("", "end", values=(row[0], row[1]))
+
+						
+    def create_registration_tab(self, tab):
+        # Titre principal
+        ctk.CTkLabel(tab, text="Inscription des Élèves", font=("Arial", 24, "bold")).pack(pady=10)
+        
+        # Frame principale divisée en deux parties
+        main_frame = ctk.CTkFrame(tab)
+        main_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        # Frame gauche pour le formulaire
+        form_frame = ctk.CTkFrame(main_frame)
+        form_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        
+        # Frame droite pour la photo et les documents
+        docs_frame = ctk.CTkFrame(main_frame)
+        docs_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+        
+        # === FORMULAIRE D'INSCRIPTION ===
+        self.create_registration_form(form_frame)
+        
+        # === SECTION PHOTO ET DOCUMENTS ===
+        self.create_documents_section(docs_frame)
+    
+    def create_registration_form(self, parent):
+        # Création des variables pour stocker les données
+        self.registration_vars = {
+            "name": ctk.StringVar(),
+            "surname": ctk.StringVar(),
+            "birth_date": ctk.StringVar(),
+            "gender": ctk.StringVar(value="M"),
+            "address": ctk.StringVar(),
+            "class": ctk.StringVar(),
+            "phone": ctk.StringVar(),
+            "parent_name": ctk.StringVar(),
+            "parent_phone": ctk.StringVar(),
+            "email": ctk.StringVar()
+        }
+        
+        # Style des labels et entrées
+        label_font = ("Arial", 12)
+        entry_width = 250
+        
+        # Création de deux colonnes pour le formulaire
+        left_form = ctk.CTkFrame(parent)
+        left_form.pack(side="left", fill="both", expand=True, padx=10)
+        
+        right_form = ctk.CTkFrame(parent)
+        right_form.pack(side="right", fill="both", expand=True, padx=10)
+        
+        # === COLONNE GAUCHE ===
+        # Informations personnelles
+        ctk.CTkLabel(left_form, text="Informations Personnelles", 
+                     font=("Arial", 14, "bold")).pack(pady=10)
+        
+        # Nom
+        field_frame = ctk.CTkFrame(left_form)
+        field_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(field_frame, text="Nom*:", font=label_font).pack(side="left")
+        name_entry = ctk.CTkEntry(field_frame, width=entry_width, 
+                                 textvariable=self.registration_vars["name"])
+        name_entry.pack(side="right")
+        
+        # Prénom
+        field_frame = ctk.CTkFrame(left_form)
+        field_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(field_frame, text="Prénom*:", font=label_font).pack(side="left")
+        surname_entry = ctk.CTkEntry(field_frame, width=entry_width, 
+                                    textvariable=self.registration_vars["surname"])
+        surname_entry.pack(side="right")
+        
+        # Date de naissance
+        field_frame = ctk.CTkFrame(left_form)
+        field_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(field_frame, text="Date de naissance*:", 
+                     font=label_font).pack(side="left")
+        
+        # Création d'un sélecteur de date personnalisé
+        date_frame = ctk.CTkFrame(field_frame)
+        date_frame.pack(side="right")
+        
+        self.day_var = ctk.StringVar(value="01")
+        self.month_var = ctk.StringVar(value="01")
+        self.year_var = ctk.StringVar(value="2000")
+        
+        # Jour
+        day_menu = ctk.CTkOptionMenu(date_frame, 
+                                    values=[f"{i:02d}" for i in range(1, 32)],
+                                    variable=self.day_var,
+                                    width=60)
+        day_menu.pack(side="left", padx=2)
+        
+        # Mois
+        month_menu = ctk.CTkOptionMenu(date_frame,
+                                      values=[f"{i:02d}" for i in range(1, 13)],
+                                      variable=self.month_var,
+                                      width=60)
+        month_menu.pack(side="left", padx=2)
+        
+        # Année
+        current_year = datetime.now().year
+        year_menu = ctk.CTkOptionMenu(date_frame,
+                                     values=[str(i) for i in range(current_year-30, current_year+1)],
+                                     variable=self.year_var,
+                                     width=80)
+        year_menu.pack(side="left", padx=2)
+        
+        # Genre
+        field_frame = ctk.CTkFrame(left_form)
+        field_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(field_frame, text="Genre:", font=label_font).pack(side="left")
+        gender_frame = ctk.CTkFrame(field_frame)
+        gender_frame.pack(side="right")
+        
+        ctk.CTkRadioButton(gender_frame, text="Masculin", 
+                          variable=self.registration_vars["gender"], 
+                          value="M").pack(side="left", padx=10)
+        ctk.CTkRadioButton(gender_frame, text="Féminin", 
+                          variable=self.registration_vars["gender"], 
+                          value="F").pack(side="left", padx=10)
+        
+        # Adresse
+        field_frame = ctk.CTkFrame(left_form)
+        field_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(field_frame, text="Adresse:", font=label_font).pack(side="left")
+        address_entry = ctk.CTkEntry(field_frame, width=entry_width, 
+                                    textvariable=self.registration_vars["address"])
+        address_entry.pack(side="right")
+        
+        # === COLONNE DROITE ===
+        # Informations scolaires
+        ctk.CTkLabel(right_form, text="Informations Scolaires", 
+                     font=("Arial", 14, "bold")).pack(pady=10)
+        
+        # Classe
+        # Modification pour la sélection de classe
+        field_frame = ctk.CTkFrame(right_form)
+        field_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(field_frame, text="Classe*:", font=label_font).pack(side="left")
+		
+		# Lier la variable class_level à registration_vars["class"]
+        self.registration_vars["class"] = ctk.StringVar(value="Primary")  # Valeur par défaut
+        self.class_level = self.registration_vars["class"]  # Utiliser la même variable
+        
+        # Liste fixe des niveaux
+        levels = ["Primary", "College", "High School"]
+        
+        # Créer le menu déroulant pour la classe
+        self.class_level = ctk.StringVar()
+        class_menu = ctk.CTkOptionMenu(
+            field_frame,
+            variable=self.class_level,
+            values=levels,
+            command=self.update_subjects_field,  # Ajouter cette fonction de callback
+            width=entry_width
+        )
+        class_menu.pack(side="right")
+        
+        # Ajouter un frame pour les matières
+        self.subjects_frame = ctk.CTkFrame(right_form)
+        self.subjects_frame.pack(fill="x", pady=5)
+        self.subject_checkboxes = []  # Pour stocker les références aux checkboxes
+        
+        # Créer le label pour les matières
+        ctk.CTkLabel(self.subjects_frame, text="Matières disponibles:", 
+                     font=("Arial", 12, "bold")).pack(pady=5)
+            
+       
+        
+        # Téléphone
+        field_frame = ctk.CTkFrame(right_form)
+        field_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(field_frame, text="Téléphone:", font=label_font).pack(side="left")
+        phone_entry = ctk.CTkEntry(field_frame, width=entry_width, 
+                                  textvariable=self.registration_vars["phone"])
+        phone_entry.pack(side="right")
+        
+        # Email
+        field_frame = ctk.CTkFrame(right_form)
+        field_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(field_frame, text="Email:", font=label_font).pack(side="left")
+        email_entry = ctk.CTkEntry(field_frame, width=entry_width, 
+                                  textvariable=self.registration_vars["email"])
+        email_entry.pack(side="right")
+        
+        # Information du parent/tuteur
+        ctk.CTkLabel(right_form, text="Information du Parent/Tuteur", 
+                     font=("Arial", 14, "bold")).pack(pady=10)
+        
+        # Nom du parent
+        field_frame = ctk.CTkFrame(right_form)
+        field_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(field_frame, text="Nom du parent*:", 
+                     font=label_font).pack(side="left")
+        parent_name_entry = ctk.CTkEntry(field_frame, width=entry_width, 
+                                        textvariable=self.registration_vars["parent_name"])
+        parent_name_entry.pack(side="right")
+        
+        # Téléphone du parent
+        field_frame = ctk.CTkFrame(right_form)
+        field_frame.pack(fill="x", pady=5)
+        ctk.CTkLabel(field_frame, text="Téléphone parent*:", 
+                     font=label_font).pack(side="left")
+        parent_phone_entry = ctk.CTkEntry(field_frame, width=entry_width, 
+                                         textvariable=self.registration_vars["parent_phone"])
+        parent_phone_entry.pack(side="right")
+        
+        # Boutons d'action
+        buttons_frame = ctk.CTkFrame(parent)
+        buttons_frame.pack(fill="x", pady=20)
+        
+        ctk.CTkButton(buttons_frame, text="Enregistrer", 
+                      command=self.save_student).pack(side="left", padx=10)
+        ctk.CTkButton(buttons_frame, text="Réinitialiser", 
+                      command=self.reset_form).pack(side="left", padx=10)
+					  
+		# Ajouter un frame pour le montant total après le subjects_frame
+        self.total_amount_frame = ctk.CTkFrame(right_form)
+        self.total_amount_frame.pack(fill="x", pady=10)
+        
+        ctk.CTkLabel(
+            self.total_amount_frame, 
+            text="Montant total à payer:",
+            font=("Arial", 14, "bold")
+        ).pack(side="left", padx=10)
+        
+        self.total_amount_label = ctk.CTkLabel(
+            self.total_amount_frame,
+            text="0.00 €",
+            font=("Arial", 14, "bold"),
+            text_color="#2E7D32"  # Vert pour le montant
+        )
+        self.total_amount_label.pack(side="right", padx=10)
+        self.registration_vars["class"] = self.class_level  # Ajoutez cette ligne si ce n'est pas déjà fait
+
+        # Frame pour le statut du paiement
+        self.payment_status_frame = ctk.CTkFrame(right_form)
+        self.payment_status_frame.pack(fill="x", pady=10)
+        
+        # Variable pour le statut du paiement
+        self.payment_completed = ctk.BooleanVar(value=False)
+        
+        # Checkbox pour le paiement
+        self.payment_checkbox = ctk.CTkCheckBox(
+            self.payment_status_frame,
+            text="Paiement effectué",
+            variable=self.payment_completed,
+            command=self.update_payment_status,
+            font=("Arial", 12, "bold"),
+            text_color="#2E7D32"  # Vert
+        )
+        self.payment_checkbox.pack(side="left", padx=10, pady=5)
+        
+        # Label pour le statut
+        self.payment_status_label = ctk.CTkLabel(
+            self.payment_status_frame,
+            text="Non payé",
+            font=("Arial", 12, "bold"),
+            text_color="#C62828"  # Rouge
+        )
+        self.payment_status_label.pack(side="right", padx=10)        
+		
+    def update_payment_status(self):
+        """Met à jour l'affichage du statut de paiement"""
+        if self.payment_completed.get():
+            self.payment_status_label.configure(
+                text="Payé",
+                text_color="#2E7D32"  # Vert pour payé
+            )
+            
+            # Mettre à jour le montant total payé
+            total_fee = float(self.total_amount_label.cget("text").replace(" €", ""))
+            self.total_paid = total_fee
+            
+        else:
+            self.payment_status_label.configure(
+                text="Non payé",
+                text_color="#C62828"  # Rouge pour non payé
+            )
+            self.total_paid = 0
+            
+        # Mettre à jour l'affichage du montant total payé si nécessaire
+        if hasattr(self, 'total_paid_label'):
+            self.total_paid_label.configure(text=f"{self.total_paid:.2f} €")
+    def create_documents_section(self, parent):
+        # Section Photo
+        photo_frame = ctk.CTkFrame(parent)
+        photo_frame.pack(fill="x", pady=10)
+        
+        ctk.CTkLabel(photo_frame, text="Photo de l'élève", 
+                     font=("Arial", 14, "bold")).pack(pady=5)
+        
+        # Zone pour la photo
+        self.photo_frame = ctk.CTkFrame(photo_frame, width=200, height=200)
+        self.photo_frame.pack(pady=5)
+        self.photo_frame.pack_propagate(False)
+        
+        self.photo_label = ctk.CTkLabel(self.photo_frame, text="Aucune photo")
+        self.photo_label.pack(expand=True)
+        
+        self.photo_path = None
+        
+        # Boutons pour la photo
+        photo_buttons_frame = ctk.CTkFrame(photo_frame)
+        photo_buttons_frame.pack(pady=5)
+        
+        ctk.CTkButton(photo_buttons_frame, text="Ajouter une photo", 
+                      command=self.add_photo).pack(side="left", padx=5)
+        ctk.CTkButton(photo_buttons_frame, text="Supprimer", 
+                      command=self.remove_photo).pack(side="left", padx=5)
+        
+        # Section Documents
+        docs_frame = ctk.CTkFrame(parent)
+        docs_frame.pack(fill="both", expand=True, pady=10)
+        
+        ctk.CTkLabel(docs_frame, text="Documents requis", 
+                     font=("Arial", 14, "bold")).pack(pady=5)
+        
+        # Liste des documents requis avec leur statut
+        self.doc_vars = {}
+        self.doc_paths = {}
+        required_docs = [
+            ("Copie CIN parent", True),
+            ("Certificat de naissance", True),
+            ("Photo d'identité", True),
+            ("Carnet de vaccination", True),
+            ("Dernier bulletin scolaire", True),
+            ("Attestation de travail parent", False),
+            ("Autres documents", False)
+        ]
+        
+        for doc, required in required_docs:
+            frame = ctk.CTkFrame(docs_frame)
+            frame.pack(fill="x", pady=2, padx=5)
+            
+            # Variable pour le statut du document
+            status_var = ctk.BooleanVar()
+            self.doc_vars[doc] = status_var
+            self.doc_paths[doc] = None
+            
+            # Checkbox et label
+            chk = ctk.CTkCheckBox(frame, text=doc, variable=status_var)
+            chk.pack(side="left", padx=5)
+            
+            if required:
+                req_label = ctk.CTkLabel(frame, text="*", text_color="red")
+                req_label.pack(side="left")
+            
+            # Boutons pour le document
+            btn_frame = ctk.CTkFrame(frame)
+            btn_frame.pack(side="right")
+            
+            ctk.CTkButton(btn_frame, text="Ajouter", 
+                         command=lambda d=doc: self.add_document(d)).pack(side="left", padx=2)
+            ctk.CTkButton(btn_frame, text="Voir", 
+                         command=lambda d=doc: self.view_document(d)).pack(side="left", padx=2)
+    
+    def add_photo(self):
+        file_path = filedialog.askopenfilename(
+            title="Sélectionner une photo",
+            filetypes=[("Images", "*.png *.jpg *.jpeg *.gif *.bmp")]
+        )
+        
+        if file_path:
+            try:
+                # Ouvrir et redimensionner l'image
+                image = Image.open(file_path)
+                image = image.resize((180, 180), Image.Resampling.LANCZOS)
+                
+                # Convertir en format compatible avec CTkinter
+                photo = ImageTk.PhotoImage(image)
+                
+                # Mettre à jour le label
+                self.photo_label.configure(image=photo, text="")
+                self.photo_label.image = photo  # Garder une référence
+                
+                # Sauvegarder le chemin
+                self.photo_path = file_path
+                
+            except Exception as e:
+                CTkMessagebox(title="Erreur", 
+                             message=f"Erreur lors du chargement de l'image: {str(e)}", 
+                             icon="cancel")
+    
+    def remove_photo(self):
+        self.photo_label.configure(image=None, text="Aucune photo")
+        self.photo_path = None
+    
+    def add_document(self, doc_name):
+        file_path = filedialog.askopenfilename(
+            title=f"Sélectionner le document - {doc_name}",
+            filetypes=[
+                ("Documents", "*.pdf *.doc *.docx *.jpg *.jpeg *.png"),
+                ("PDF", "*.pdf"),
+                ("Word", "*.doc *.docx"),
+                ("Images", "*.jpg *.jpeg *.png")
+            ]
+        )
+        
+        if file_path:
+            self.doc_paths[doc_name] = file_path
+            self.doc_vars[doc_name].set(True)
+            
+            # Afficher une confirmation
+            CTkMessagebox(title="Succès", 
+                         message=f"Document '{doc_name}' ajouté avec succès", 
+                         icon="check")
+    
+    def view_document(self, doc_name):
+        if self.doc_paths.get(doc_name):
+            try:
+                os.startfile(self.doc_paths[doc_name])
+            except Exception as e:
+                CTkMessagebox(title="Erreur", 
+                             message=f"Erreur lors de l'ouverture du document: {str(e)}", 
+                             icon="cancel")
+        else:
+            CTkMessagebox(title="Information", 
+                         message="Aucun document n'a été ajouté", 
+                         icon="info")
+    
+    def save_student(self):
+        # Validation des champs requis
+        required_fields = {
+            "name": "Nom",
+            "surname": "Prénom",
+            "class": "Classe",
+            "parent_name": "Nom du parent",
+            "parent_phone": "Téléphone parent"
+        }
+        
+        # Vérification des champs obligatoires
+        for field, label in required_fields.items():
+            if not self.registration_vars[field].get().strip():
+                CTkMessagebox(
+                    title="Erreur", 
+                    message=f"Le champ '{label}' est obligatoire", 
+                    icon="cancel"
+                )
+                return
+    
+        try:
+            # Récupérer les matières sélectionnées et calculer le total
+            selected_subjects = []
+            selected_level = self.registration_vars["class"].get()
+            
+            # Récupérer les matières sélectionnées
+            for subject_name, var, fee in self.subject_checkboxes:
+                if var.get():
+                    selected_subjects.append(subject_name)
+            
+            # Convertir la liste des matières en chaîne
+            subjects_str = ", ".join(selected_subjects)
+        
+            # Construire la date de naissance
+            birth_date = f"{self.year_var.get()}-{self.month_var.get()}-{self.day_var.get()}"
+            
+            # Récupérer le montant total depuis le label
+            total_fee = float(self.total_amount_label.cget("text").replace(" €", ""))
+            
+            # Statut du paiement et montant payé
+            payment_completed = self.payment_completed.get()
+            total_paid = total_fee if payment_completed else 0
+            
+            # Créer un curseur
+            cursor = self.conn.cursor()
+            
+            # Insérer l'étudiant dans la base de données
+            cursor.execute("""
+                INSERT INTO Students (
+                    name, 
+                    surname, 
+                    birth_date, 
+                    gender, 
+                    address, 
+                    class,
+                    phone_number, 
+                    parent_name, 
+                    parent_phone, 
+                    email,
+                    registration_date, 
+                    photo_path, 
+                    subjects, 
+                    total_fee,
+                    total_paid, 
+                    payment_completed, 
+                    last_payment_date
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+                    CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, 
+                    CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END
+                )
+            """, (
+                self.registration_vars["name"].get(),
+                self.registration_vars["surname"].get(),
+                birth_date,
+                self.registration_vars["gender"].get(),
+                self.registration_vars["address"].get(),
+                selected_level,
+                self.registration_vars["phone"].get(),
+                self.registration_vars["parent_name"].get(),
+                self.registration_vars["parent_phone"].get(),
+                self.registration_vars["email"].get(),
+                self.photo_path,
+                subjects_str,
+                total_fee,
+                total_paid,
+                payment_completed,
+                payment_completed
+            ))
+            
+            # Récupérer l'ID de l'étudiant nouvellement inséré
+            student_id = cursor.lastrowid
+            
+            # Si le paiement est effectué, créer une entrée dans la table Payments
+            if payment_completed:
+                cursor.execute("""
+                    INSERT INTO Payments (
+                        student_id, 
+                        amount, 
+                        payment_date, 
+                        payment_method, 
+                        notes
+                    ) VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?)
+                """, (
+                    student_id,
+                    total_fee,
+                    "Paiement initial",
+                    "Paiement effectué lors de l'inscription"
+                ))
+            
+            # Sauvegarder les documents
+            for doc_name, path in self.doc_paths.items():
+                if path:
+                    cursor.execute("""
+                        INSERT INTO StudentDocuments (
+                            student_id, 
+                            document_type, 
+                            file_path, 
+                            uploaded_date
+                        ) VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                    """, (student_id, doc_name, path))
+            
+            # Valider les changements dans la base de données
+            self.conn.commit()
+            
+            # Afficher message de succès
+            CTkMessagebox(
+                title="Succès", 
+                message="Élève enregistré avec succès!", 
+                icon="check"
+            )
+            
+            # Réinitialiser le formulaire
+            self.reset_form()
+            
+        except sqlite3.Error as e:
+            # En cas d'erreur SQL, annuler les changements
+            if hasattr(self, 'conn'):
+                self.conn.rollback()
+            CTkMessagebox(
+                title="Erreur", 
+                message=f"Erreur lors de l'enregistrement dans la base de données: {str(e)}", 
+                icon="cancel"
+            )
+        except Exception as e:
+            # Capture les autres erreurs possibles
+            CTkMessagebox(
+                title="Erreur", 
+                message=f"Une erreur inattendue s'est produite: {str(e)}", 
+                icon="cancel"
+            )
+    def reset_form(self):
+        # Réinitialiser les champs du formulaire
+        for var in self.registration_vars.values():
+            var.set("")
+        
+        # Réinitialiser la date
+        self.day_var.set("01")
+        self.month_var.set("01")
+        self.year_var.set("2000")
+        
+        # Réinitialiser la photo
+        self.remove_photo()
+        
+        # Réinitialiser les documents
+        self.doc_paths.clear()
+        for var in self.doc_vars.values():
+            var.set(False)
+		
+        # Réinitialiser le statut du paiement
+        self.payment_completed.set(False)
+        self.update_payment_status()
+    def update_subjects_field(self, *args):
+        # Effacer les anciennes checkboxes
+        for widget in self.subjects_frame.winfo_children():
+            widget.destroy()
+    
+        # Récupérer le niveau sélectionné du menu déroulant
+        selected_level = self.class_level.get()
+        print(f"Niveau sélectionné: {selected_level}")  # Debug
+    
+        try:
+            cursor = self.conn.cursor()
+            
+            if selected_level == "Primary":
+                # Pour le niveau primaire, récupérer le montant fixe
+                cursor.execute("SELECT amount FROM FeeConfiguration WHERE level = 'Primary'")
+                result = cursor.fetchone()
+                if result:
+                    primary_fee = result[0]
+                    # Créer une seule checkbox pour le montant fixe
+                    var = ctk.BooleanVar(value=True)
+                    checkbox = ctk.CTkCheckBox(
+                        self.subjects_frame, 
+                        text=f"Toutes les matières - Montant fixe: {primary_fee:.2f} €",
+                        variable=var,
+                        state="disabled"  # Désactivé car c'est un montant fixe
+                    )
+                    checkbox.pack(pady=10)
+                    self.subject_checkboxes = [("Primary_All", var, primary_fee)]
+                    # Mettre à jour le montant total
+                    self.total_amount_label.configure(text=f"{primary_fee:.2f} €")
+                else:
+                    ctk.CTkLabel(
+                        self.subjects_frame,
+                        text="Aucun montant configuré pour le niveau primaire",
+                        text_color="red"
+                    ).pack(pady=10)
+            else:
+                # Pour College et High School
+                cursor.execute("""
+                    SELECT name, fee FROM Subjects 
+                    WHERE level = ?
+                    ORDER BY name
+                """, (selected_level,))
+                
+                subjects = cursor.fetchall()
+                self.subject_checkboxes = []
+                
+                if subjects:
+                    # Créer un frame pour contenir toutes les matières
+                    subjects_container = ctk.CTkFrame(self.subjects_frame)
+                    subjects_container.pack(fill="both", expand=True, padx=5, pady=5)
+                    
+                    # Label d'en-tête
+                    header_frame = ctk.CTkFrame(subjects_container)
+                    header_frame.pack(fill="x", pady=(0, 5))
+                    ctk.CTkLabel(header_frame, text="Matières disponibles:", 
+                                font=("Arial", 12, "bold")).pack(pady=5)
+                    
+                    # Créer les checkboxes pour chaque matière
+                    for subject_name, fee in subjects:
+                        var = ctk.BooleanVar()
+                        frame = ctk.CTkFrame(subjects_container)
+                        frame.pack(fill="x", pady=2)
+                        
+                        checkbox = ctk.CTkCheckBox(
+                            frame,
+                            text=f"{subject_name}",
+                            variable=var,
+                            command=self.calculate_total
+                        )
+                        checkbox.pack(side="left", padx=5)
+                        
+                        # Afficher le montant à droite
+                        fee_label = ctk.CTkLabel(
+                            frame,
+                            text=f"{fee:.2f} €",
+                            font=("Arial", 12)
+                        )
+                        fee_label.pack(side="right", padx=5)
+                        
+                        self.subject_checkboxes.append((subject_name, var, fee))
+                    
+                    # Ajouter un bouton "Tout sélectionner"
+                    select_all_var = ctk.BooleanVar()
+                    select_all_btn = ctk.CTkCheckBox(
+                        subjects_container,
+                        text="Tout sélectionner",
+                        variable=select_all_var,
+                        command=lambda: self.toggle_all_subjects(select_all_var.get())
+                    )
+                    select_all_btn.pack(pady=10)
+                    
+                    # Initialiser le montant total à 0
+                    self.calculate_total()
+                else:
+                    ctk.CTkLabel(
+                        self.subjects_frame,
+                        text=f"Aucune matière configurée pour le niveau {selected_level}",
+                        text_color="red"
+                    ).pack(pady=10)
+                    print(f"Aucune matière trouvée pour le niveau {selected_level}")
+                    
+        except sqlite3.Error as e:
+            print(f"Erreur SQL: {e}")
+            CTkMessagebox(
+                title="Erreur",
+                message=f"Erreur lors de la récupération des matières: {str(e)}",
+                icon="cancel"
+            )
+    
+    def toggle_all_subjects(self, state):
+        """Sélectionner ou désélectionner toutes les matières"""
+        for _, var, _ in self.subject_checkboxes:
+            var.set(state)
+        self.calculate_total()
+    
+    def calculate_total(self, *args):
+        """Calculer le montant total en fonction des matières sélectionnées"""
+        total = 0
+        selected_level = self.class_level.get()
+        
+        try:
+            if selected_level == "Primary":
+                # Pour le primaire, utiliser le montant fixe
+                if self.subject_checkboxes:
+                    total = self.subject_checkboxes[0][2]
+            else:
+                # Pour les autres niveaux, calculer la somme des matières sélectionnées
+                for _, var, fee in self.subject_checkboxes:
+                    if var.get():
+                        total += fee
+    
+            # Mettre à jour le label avec le nouveau total
+            self.total_amount_label.configure(text=f"{total:.2f} €")
+            
+            # Changer la couleur en fonction du montant
+            if total > 0:
+                self.total_amount_label.configure(text_color="#2E7D32")  # Vert
+            else:
+                self.total_amount_label.configure(text_color="#C62828")  # Rouge
+                
+        except Exception as e:
+            CTkMessagebox(
+                title="Erreur",
+                message=f"Erreur lors du calcul du total: {str(e)}",
+                icon="cancel"
+            )
+    def update_subject_checkboxes(self):
+        # Efface les anciennes checkboxes avant de mettre à jour
+        for widget in self.subjects_frame.winfo_children():
+            widget.destroy()
+        
+        level = self.class_level.get()
+        if level not in ["Primary"]:
+            # Récupérer les matières pour le niveau sélectionné
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT name FROM Subjects WHERE level = ?", (level,))
+            rows = cursor.fetchall()
+        
+            # Créer une case à cocher pour chaque matière
+            self.subject_checkboxes = []
+            for row in rows:
+                subject_name = row[0]
+                var = ctk.BooleanVar()
+                checkbox = ctk.CTkCheckBox(self.subjects_frame, text=subject_name, variable=var)
+                checkbox.pack(pady=2, anchor='w')
+                self.subject_checkboxes.append((checkbox, var))  # Enregistrer la checkbox et la variable
+			
+
+    def register_student(self):
+        try:
+            cursor = self.conn.cursor()
+
+            # Récupérer les matières sélectionnées
+            selected_subjects = [name for name, var in self.subject_checkboxes if var.get()]
+            subjects_str = ", ".join(selected_subjects) if selected_subjects else "Aucune"
+
+            # Insertion dans la base de données
+            cursor.execute("""
+                INSERT INTO Students 
+                (name, surname, class, phone_number, payment_completed, subjects) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                self.name_entry.get(),
+                self.surname_entry.get(),
+                self.class_level.get(),
+                self.phone_entry.get(),
+                self.payment_completed.get(),
+                subjects_str
+            ))
+            self.conn.commit()
+            CTkMessagebox(title="Succès", message="Élève inscrit avec succès !", icon="check")
+        except Exception as e:
+            CTkMessagebox(title="Erreur", message=f"Erreur d'inscription : {str(e)}", icon="cancel")
+			
+    def create_payment_tracking_tab(self, tab):
+        # Suivi des paiements
+        ctk.CTkLabel(tab, text="Suivi des Paiements", font=("Arial", 20, "bold")).pack(pady=10)
+        
+        # Frame principale divisée en deux parties
+        main_frame = ctk.CTkFrame(tab)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        # Frame gauche pour la recherche et le tableau
+        left_frame = ctk.CTkFrame(main_frame)
+        left_frame.pack(side="left", fill="both", expand=True, padx=5, pady=5)
+        
+        # Frame droite pour les détails et actions
+        right_frame = ctk.CTkFrame(main_frame)
+        right_frame.pack(side="right", fill="both", padx=5, pady=5, expand=True)
+        
+        # === PARTIE GAUCHE ===
+        # Frame de recherche
+        search_frame = ctk.CTkFrame(left_frame)
+        search_frame.pack(fill="x", padx=5, pady=5)
+        
+        # Barre de recherche avec icône
+        ctk.CTkLabel(search_frame, text="🔍", font=("Arial", 16)).pack(side="left", padx=5)
+        self.search_entry = ctk.CTkEntry(search_frame, width=200, placeholder_text="Rechercher un élève...")
+        self.search_entry.pack(side="left", padx=5, pady=5)
+        
+        # Filtre par statut
+        self.status_var = ctk.StringVar(value="Tous")
+        status_filter = ctk.CTkOptionMenu(
+            search_frame,
+            values=["Tous", "Payé", "Non payé", "Partiel"],
+            variable=self.status_var,
+            command=self.filter_payments
+        )
+        status_filter.pack(side="left", padx=5)
+        
+        # Filtre par classe
+        self.class_filter_var = ctk.StringVar(value="Toutes")
+        class_filter = ctk.CTkOptionMenu(
+            search_frame,
+            values=["Toutes", "Primary", "College", "High School"],
+            variable=self.class_filter_var,
+            command=self.filter_payments
+        )
+        class_filter.pack(side="left", padx=5)
+        
+        # Tableau des paiements
+        columns = ("ID", "Nom", "Prénom", "Classe", "Total Payé", "Statut", "Dernier Paiement")
+        self.payment_treeview = ttk.Treeview(left_frame, columns=columns, show="headings", height=20)
+        
+        # Configuration des colonnes
+        column_widths = {
+            "ID": 50, "Nom": 120, "Prénom": 120, "Classe": 100,
+            "Total Payé": 100, "Statut": 100, "Dernier Paiement": 150
+        }
+        
+        for col, width in column_widths.items():
+            self.payment_treeview.heading(col, text=col, command=lambda c=col: self.sort_treeview(c))
+            self.payment_treeview.column(col, width=width, anchor="center")
+        
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(left_frame, orient="vertical", command=self.payment_treeview.yview)
+        self.payment_treeview.configure(yscrollcommand=scrollbar.set)
+        
+        self.payment_treeview.pack(side="left", fill="both", expand=True, pady=5)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Binding pour la sélection
+        self.payment_treeview.bind("<<TreeviewSelect>>", self.show_student_details)
+        
+        # === PARTIE DROITE ===
+        # Détails de l'élève
+        ctk.CTkLabel(right_frame, text="Détails de l'Élève", font=("Arial", 16, "bold")).pack(pady=10)
+        
+        # Frame pour les détails
+        self.details_frame = ctk.CTkFrame(right_frame)
+        self.details_frame.pack(fill="x", padx=5, pady=5)
+        
+        # Labels pour les détails
+        self.detail_labels = {}
+        for field in ["Nom complet", "Classe", "Téléphone", "Date d'inscription", "Montant total", "Statut"]:
+            frame = ctk.CTkFrame(self.details_frame)
+            frame.pack(fill="x", pady=2)
+            ctk.CTkLabel(frame, text=f"{field}:", font=("Arial", 12, "bold")).pack(side="left", padx=5)
+            self.detail_labels[field] = ctk.CTkLabel(frame, text="", font=("Arial", 12))
+            self.detail_labels[field].pack(side="left", padx=5)
+        
+        # Frame pour les actions
+        actions_frame = ctk.CTkFrame(right_frame)
+        actions_frame.pack(fill="x", pady=10)
+        
+        # Champ pour le nouveau paiement
+        payment_frame = ctk.CTkFrame(actions_frame)
+        payment_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(payment_frame, text="Montant:").pack(side="left", padx=5)
+        self.payment_amount = ctk.CTkEntry(payment_frame, width=100)
+        self.payment_amount.pack(side="left", padx=5)
+        
+        # Boutons d'action
+        buttons_frame = ctk.CTkFrame(actions_frame)
+        buttons_frame.pack(fill="x", pady=5)
+        
+        ctk.CTkButton(
+            buttons_frame,
+            text="Enregistrer Paiement",
+            command=self.register_payment
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            buttons_frame,
+            text="Historique",
+            command=self.show_payment_history
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            buttons_frame,
+            text="Imprimer Reçu",
+            command=self.print_receipt
+        ).pack(side="left", padx=5)
+        
+        # Initialiser l'affichage
+        self.update_payment_treeview()
+
+    def get_student_names(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT name || ' ' || surname FROM Students")
+        return [name[0] for name in cursor.fetchall()]
+
+    def record_student_payment(self):
+        try:
+            student_name = self.student_payment_combo.get()
+            payment_amount = float(self.payment_amount_entry.get())
+
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT id FROM Students WHERE name || ' ' || surname = ?", (student_name,))
+            student_id = cursor.fetchone()[0]
+
+            cursor.execute("""
+                INSERT INTO Payments (student_id, amount, date) 
+                VALUES (?, ?, ?)
+            """, (student_id, payment_amount, datetime.now().strftime('%Y-%m-%d')))
+
+            self.conn.commit()
+
+            CTkMessagebox(
+                title="Succès",
+                message="Paiement enregistré !",
+                icon="check"
+            )
+
+            # Mise à jour du treeview
+            self.update_payment_treeview()
+        except Exception as e:
+            CTkMessagebox(
+                title="Erreur",
+                message=f"Erreur d'enregistrement : {str(e)}",
+                icon="cancel"
+            )
+
+    def create_payment_treeview(self, parent):
+        # Création d'un treeview pour afficher les paiements
+        columns = ("Élève", "Montant", "Date")
+        treeview = ttk.Treeview(parent, columns=columns, show="headings")
+
+        for col in columns:
+            treeview.heading(col, text=col)
+
+        treeview.pack(padx=20, pady=20, fill="both", expand=True)
+        return treeview
+    def filter_payments(self, *args):
+        self.update_payment_treeview()
+		
+    def update_payment_treeview(self):
+        # Effacer les données existantes
+        for item in self.payment_treeview.get_children():
+            self.payment_treeview.delete(item)
+        
+        # Construire la requête SQL
+        query = """
+            SELECT 
+                id,
+                name,
+                surname,
+                class,
+                total_paid,
+                CASE 
+                    WHEN payment_completed = 1 THEN 'Payé'
+                    WHEN total_paid > 0 THEN 'Partiel'
+                    ELSE 'Non payé'
+                END as status,
+                last_payment_date
+            FROM Students
+            WHERE 1=1
+        """
+        
+        params = []
+        
+        # Ajouter les filtres
+        if self.search_entry.get():
+            query += " AND (name LIKE ? OR surname LIKE ? OR phone_number LIKE ?)"
+            search_term = f"%{self.search_entry.get()}%"
+            params.extend([search_term, search_term, search_term])
+        
+        if self.status_var.get() != "Tous":
+            query += " AND status = ?"
+            params.append(self.status_var.get())
+        
+        if self.class_filter_var.get() != "Toutes":
+            query += " AND class = ?"
+            params.append(self.class_filter_var.get())
+        
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, params)
+            
+            # Insérer les données dans le treeview
+            for row in cursor.fetchall():
+                # Formater le montant avec le symbole €
+                formatted_amount = f"{float(row[4]):.2f} €" if row[4] else "0.00 €"
+                
+                # Formater la date
+                formatted_date = row[6] if row[6] else "Aucun paiement"
+                
+                values = (
+                    row[0],  # ID
+                    row[1],  # Nom
+                    row[2],  # Prénom
+                    row[3],  # Classe
+                    formatted_amount,  # Total payé
+                    row[5],  # Statut
+                    formatted_date  # Dernier paiement
+                )
+                
+                # Définir la couleur selon le statut
+                tag = row[5].lower()
+                self.payment_treeview.insert("", "end", values=values, tags=(tag,))
+            
+            # Configurer les couleurs des tags
+            self.payment_treeview.tag_configure("payé", background="#c8e6c9")
+            self.payment_treeview.tag_configure("partiel", background="#fff9c4")
+            self.payment_treeview.tag_configure("non payé", background="#ffcdd2")
+            
+        except sqlite3.Error as e:
+            CTkMessagebox(title="Erreur", message=f"Erreur lors de la mise à jour: {str(e)}", icon="cancel")
+    
+    def show_student_details(self, event):
+        selected_item = self.payment_treeview.selection()
+        if not selected_item:
+            return
+        
+        # Récupérer l'ID de l'élève
+        student_id = self.payment_treeview.item(selected_item[0])['values'][0]
+        
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    name || ' ' || surname as full_name,
+                    class,
+                    phone_number,
+                    registration_date,
+                    total_paid,
+                    CASE 
+                        WHEN payment_completed = 1 THEN 'Payé'
+                        WHEN total_paid > 0 THEN 'Partiel'
+                        ELSE 'Non payé'
+                    END as status
+                FROM Students
+                WHERE id = ?
+            """, (student_id,))
+            
+            student = cursor.fetchone()
+            if student:
+                # Mettre à jour les labels
+                self.detail_labels["Nom complet"].configure(text=student[0])
+                self.detail_labels["Classe"].configure(text=student[1])
+                self.detail_labels["Téléphone"].configure(text=student[2] or "Non renseigné")
+                self.detail_labels["Date d'inscription"].configure(text=student[3])
+                self.detail_labels["Montant total"].configure(text=f"{float(student[4]):.2f} €")
+                self.detail_labels["Statut"].configure(text=student[5])
+                
+        except sqlite3.Error as e:
+            CTkMessagebox(title="Erreur", message=f"Erreur lors de la récupération des détails: {str(e)}", icon="cancel")
+    
+    def register_payment(self):
+        selected_item = self.payment_treeview.selection()
+        if not selected_item:
+            CTkMessagebox(title="Erreur", message="Veuillez sélectionner un élève", icon="cancel")
+            return
+        
+        try:
+            amount = float(self.payment_amount.get())
+            if amount <= 0:
+                CTkMessagebox(title="Erreur", message="Le montant doit être supérieur à 0", icon="cancel")
+                return
+            
+            # Récupérer l'ID de l'élève
+            student_id = self.payment_treeview.item(selected_item[0])['values'][0]
+            
+            # Ouvrir une fenêtre de confirmation de paiement
+            self.show_payment_confirmation_dialog(student_id, amount)
+            
+        except ValueError:
+            CTkMessagebox(title="Erreur", message="Veuillez entrer un montant valide", icon="cancel")
+    
+    def show_payment_confirmation_dialog(self, student_id, amount):
+        # Créer une nouvelle fenêtre de dialogue
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("Confirmation de Paiement")
+        dialog.geometry("500x600")
+        dialog.transient(self.root)  # Rendre la fenêtre modale
+        
+        # Récupérer les informations de l'élève
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT name, surname, class, total_paid
+            FROM Students
+            WHERE id = ?
+        """, (student_id,))
+        student = cursor.fetchone()
+        
+        # Afficher les détails du paiement
+        ctk.CTkLabel(dialog, text="Détails du Paiement", font=("Arial", 16, "bold")).pack(pady=10)
+        
+        details_frame = ctk.CTkFrame(dialog)
+        details_frame.pack(fill="x", padx=20, pady=10)
+        
+        details = [
+            ("Élève", f"{student[0]} {student[1]}"),
+            ("Classe", student[2]),
+            ("Montant actuel", f"{student[3]:.2f} €"),
+            ("Nouveau paiement", f"{amount:.2f} €"),
+            ("Total après paiement", f"{(student[3] + amount):.2f} €")
+        ]
+        
+        for label, value in details:
+            row = ctk.CTkFrame(details_frame)
+            row.pack(fill="x", pady=2)
+            ctk.CTkLabel(row, text=label + ":", font=("Arial", 12, "bold")).pack(side="left", padx=5)
+            ctk.CTkLabel(row, text=value).pack(side="left", padx=5)
+        
+        # Méthode de paiement
+        ctk.CTkLabel(dialog, text="Méthode de paiement:", font=("Arial", 12)).pack(pady=5)
+        payment_method = ctk.StringVar(value="Espèces")
+        methods = ["Espèces", "Carte bancaire", "Chèque", "Virement"]
+        for method in methods:
+            ctk.CTkRadioButton(dialog, text=method, variable=payment_method, value=method).pack(pady=2)
+        
+        # Notes
+        ctk.CTkLabel(dialog, text="Notes:", font=("Arial", 12)).pack(pady=5)
+        notes_text = ctk.CTkTextbox(dialog, height=100)
+        notes_text.pack(padx=20, pady=5, fill="x")
+        
+        # Boutons
+        buttons_frame = ctk.CTkFrame(dialog)
+        buttons_frame.pack(fill="x", padx=20, pady=20)
+        
+        def confirm_payment():
+            self.process_payment(student_id, amount, payment_method.get(), notes_text.get("1.0", "end-1c"))
+            dialog.destroy()
+        
+        def cancel():
+            dialog.destroy()
+        
+        ctk.CTkButton(
+            buttons_frame,
+            text="Confirmer",
+            command=confirm_payment,
+            fg_color="green"
+        ).pack(side="left", padx=5, expand=True)
+        
+        ctk.CTkButton(
+            buttons_frame,
+            text="Annuler",
+            command=cancel,
+            fg_color="red"
+        ).pack(side="left", padx=5, expand=True)
+    
+    def process_payment(self, student_id, amount, payment_method, notes):
+        try:
+            cursor = self.conn.cursor()
+            
+            # Insérer le paiement dans la table Payments
+            cursor.execute("""
+                INSERT INTO Payments (
+                    student_id, amount, payment_date, payment_method, notes
+                ) VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?)
+            """, (student_id, amount, payment_method, notes))
+            
+            # Mettre à jour le total payé et la date du dernier paiement
+            cursor.execute("""
+                UPDATE Students 
+                SET total_paid = total_paid + ?,
+                    last_payment_date = CURRENT_TIMESTAMP,
+                    payment_completed = CASE 
+                        WHEN (total_paid + ?) >= 
+                            (SELECT amount FROM FeeConfiguration WHERE level = Students.class)
+                        THEN 1 ELSE 0 END
+                WHERE id = ?
+            """, (amount, amount, student_id))
+            
+            self.conn.commit()
+            
+            # Mettre à jour l'affichage
+            self.update_payment_treeview()
+            
+            # Proposer d'imprimer le reçu
+            if CTkMessagebox(
+                title="Succès",
+                message="Paiement enregistré avec succès!\nVoulez-vous imprimer le reçu?",
+                icon="check",
+                option_1="Oui",
+                option_2="Non"
+            ).get() == "Oui":
+                self.print_receipt(student_id, amount, payment_method, notes)
+                
+        except sqlite3.Error as e:
+            CTkMessagebox(title="Erreur", 
+                         message=f"Erreur lors de l'enregistrement du paiement: {str(e)}", 
+                         icon="cancel")
+						 
+    def show_payment_history(self):
+        selected_item = self.payment_treeview.selection()
+        if not selected_item:
+            CTkMessagebox(title="Erreur", message="Veuillez sélectionner un élève", icon="cancel")
+            return
+        
+        student_id = self.payment_treeview.item(selected_item[0])['values'][0]
+        
+        # Créer une nouvelle fenêtre pour l'historique
+        history_window = ctk.CTkToplevel(self.root)
+        history_window.title("Historique des Paiements")
+        history_window.geometry("800x600")
+        
+        # Récupérer les informations de l'élève
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT name, surname, class, total_paid
+            FROM Students
+            WHERE id = ?
+        """, (student_id,))
+        student = cursor.fetchone()
+        
+        # Frame d'en-tête avec les informations de l'élève
+        header_frame = ctk.CTkFrame(history_window)
+        header_frame.pack(fill="x", padx=10, pady=5)
+        
+        student_info = ctk.CTkLabel(
+            header_frame,
+            text=f"Élève: {student[0]} {student[1]} | Classe: {student[2]} | Total payé: {student[3]:.2f} €",
+            font=("Arial", 14, "bold")
+        )
+        student_info.pack(pady=10)
+        
+        # Frame pour les filtres
+        filter_frame = ctk.CTkFrame(history_window)
+        filter_frame.pack(fill="x", padx=10, pady=5)
+        
+        # Filtre par date
+        date_frame = ctk.CTkFrame(filter_frame)
+        date_frame.pack(side="left", padx=5)
+        
+        ctk.CTkLabel(date_frame, text="Période:").pack(side="left", padx=5)
+        period_var = ctk.StringVar(value="Tout")
+        period_menu = ctk.CTkOptionMenu(
+            date_frame,
+            values=["Tout", "Aujourd'hui", "Cette semaine", "Ce mois", "Cette année"],
+            variable=period_var,
+            command=lambda x: self.filter_history(history_tree, student_id, x)
+        )
+        period_menu.pack(side="left", padx=5)
+        
+        # Boutons d'export
+        export_frame = ctk.CTkFrame(filter_frame)
+        export_frame.pack(side="right", padx=5)
+        
+        ctk.CTkButton(
+            export_frame,
+            text="Exporter PDF",
+            command=lambda: self.export_history_pdf(student_id)
+        ).pack(side="left", padx=5)
+        
+        ctk.CTkButton(
+            export_frame,
+            text="Exporter Excel",
+            command=lambda: self.export_history_excel(student_id)
+        ).pack(side="left", padx=5)
+        
+        # Créer le tableau d'historique
+        columns = ("Date", "Montant", "Méthode", "Notes", "Reçu")
+        history_tree = ttk.Treeview(history_window, columns=columns, show="headings", height=20)
+        
+        # Configurer les colonnes
+        column_widths = {
+            "Date": 150,
+            "Montant": 100,
+            "Méthode": 120,
+            "Notes": 300,
+            "Reçu": 100
+        }
+        
+        for col, width in column_widths.items():
+            history_tree.heading(col, text=col)
+            history_tree.column(col, width=width)
+        
+        # Ajouter une scrollbar
+        scrollbar = ttk.Scrollbar(history_window, orient="vertical", command=history_tree.yview)
+        history_tree.configure(yscrollcommand=scrollbar.set)
+        
+        # Frame pour contenir le treeview et la scrollbar
+        tree_frame = ctk.CTkFrame(history_window)
+        tree_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        history_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Charger l'historique
+        self.load_payment_history(history_tree, student_id)
+        
+        # Ajouter un menu contextuel
+        self.create_history_context_menu(history_tree, student_id)
+    
+    def load_payment_history(self, tree, student_id, period="Tout"):
+        # Effacer les données existantes
+        for item in tree.get_children():
+            tree.delete(item)
+        
+        # Préparer la requête SQL en fonction de la période
+        query = """
+            SELECT 
+                payment_date,
+                amount,
+                payment_method,
+                notes,
+                id
+            FROM Payments
+            WHERE student_id = ?
+        """
+        
+        params = [student_id]
+        
+        if period != "Tout":
+            current_date = datetime.now()
+            if period == "Aujourd'hui":
+                query += " AND date(payment_date) = date('now')"
+            elif period == "Cette semaine":
+                query += " AND date(payment_date) >= date('now', '-7 days')"
+            elif period == "Ce mois":
+                query += " AND strftime('%Y-%m', payment_date) = strftime('%Y-%m', 'now')"
+            elif period == "Cette année":
+                query += " AND strftime('%Y', payment_date) = strftime('%Y', 'now')"
+        
+        query += " ORDER BY payment_date DESC"
+        
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, params)
+            
+            for payment in cursor.fetchall():
+                # Formater la date
+                date_obj = datetime.strptime(payment[0], "%Y-%m-%d %H:%M:%S")
+                formatted_date = date_obj.strftime("%d/%m/%Y %H:%M")
+                
+                # Formater le montant
+                formatted_amount = f"{payment[1]:.2f} €"
+                
+                tree.insert("", "end", values=(
+                    formatted_date,
+                    formatted_amount,
+                    payment[2],
+                    payment[3],
+                    "Voir reçu"
+                ), tags=(str(payment[4]),))
+                
+            # Configurer le tag pour le lien "Voir reçu"
+            tree.tag_bind("receipt_link", "<Button-1>", 
+                         lambda e: self.show_receipt(tree.item(tree.selection())["tags"][0]))
+            
+        except sqlite3.Error as e:
+            CTkMessagebox(title="Erreur", 
+                         message=f"Erreur lors du chargement de l'historique: {str(e)}", 
+                         icon="cancel")
+    
+    def create_history_context_menu(self, tree, student_id):
+        menu = tk.Menu(tree, tearoff=0)
+        
+        def popup(event):
+            item = tree.identify_row(event.y)
+            if item:
+                tree.selection_set(item)
+                menu.post(event.x_root, event.y_root)
+        
+        menu.add_command(label="Voir le reçu", 
+                        command=lambda: self.show_receipt(tree.item(tree.selection())["tags"][0]))
+        menu.add_command(label="Imprimer le reçu", 
+                        command=lambda: self.print_receipt(student_id, tree.item(tree.selection())["tags"][0]))
+        menu.add_separator()
+        menu.add_command(label="Modifier", 
+                        command=lambda: self.edit_payment(tree.item(tree.selection())["tags"][0]))
+        menu.add_command(label="Supprimer", 
+                        command=lambda: self.delete_payment(tree.item(tree.selection())["tags"][0]))
+        
+        tree.bind("<Button-3>", popup)  # Clic droit
+        tree.bind("<Button-2>", popup)  # Clic milieu (pour macOS)
+    
+    def print_receipt(self, student_id=None, amount=None):
+        if student_id is None:
+            selected_item = self.payment_treeview.selection()
+            if not selected_item:
+                CTkMessagebox(title="Erreur", message="Veuillez sélectionner un élève", icon="cancel")
+                return
+            student_id = self.payment_treeview.item(selected_item[0])['values'][0]
+        
+        try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A5
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import cm
+            
+            # Récupérer les informations de l'élève
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    name || ' ' || surname as full_name,
+                    class,
+                    phone_number,
+                    total_paid,
+                    last_payment_date
+                FROM Students
+                WHERE id = ?
+            """, (student_id,))
+            
+            student = cursor.fetchone()
+            
+            # Créer le dossier des reçus s'il n'existe pas
+            if not os.path.exists('receipts'):
+                os.makedirs('receipts')
+            
+            # Générer le nom du fichier
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"receipts/recu_paiement_{student_id}_{timestamp}.pdf"
+            
+            # Créer le document PDF
+            doc = SimpleDocTemplate(
+                filename,
+                pagesize=A5,
+                rightMargin=1*cm,
+                leftMargin=1*cm,
+                topMargin=1*cm,
+                bottomMargin=1*cm
+            )
+            
+            # Styles
+            styles = getSampleStyleSheet()
+            header_style = ParagraphStyle(
+                'HeaderStyle',
+                parent=styles['Heading1'],
+                fontSize=16,
+                spaceAfter=30,
+                alignment=1  # Centre
+            )
+            
+            # Contenu
+            elements = []
+            
+            # En-tête
+            elements.append(Paragraph("REÇU DE PAIEMENT", header_style))
+            elements.append(Spacer(1, 20))
+            
+            # Informations
+            data = [
+                ["Date:", datetime.now().strftime("%d/%m/%Y %H:%M")],
+                ["Élève:", student[0]],
+                ["Classe:", student[1]],
+                ["Téléphone:", student[2] or "Non renseigné"],
+                ["Montant payé:", f"{amount:.2f} €" if amount else f"{student[3]:.2f} €"],
+                ["Total payé à ce jour:", f"{student[3]:.2f} €"],
+            ]
+            
+            # Créer le tableau
+            table = Table(data, colWidths=[4*cm, 8*cm])
+            table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ]))
+            
+            elements.append(table)
+            
+            # Ajouter un espace pour la signature
+            elements.append(Spacer(1, 50))
+            elements.append(Paragraph("Signature:", styles['Normal']))
+            
+            # Générer le PDF
+            doc.build(elements)
+            
+            # Ouvrir le PDF
+            if sys.platform.startswith('darwin'):  # macOS
+                os.system(f'open "{filename}"')
+            elif sys.platform.startswith('win32'):  # Windows
+                os.system(f'start "" "{filename}"')
+            else:  # Linux
+                os.system(f'xdg-open "{filename}"')
+                
+            CTkMessagebox(title="Succès", 
+                         message=f"Le reçu a été généré : {filename}", 
+                         icon="check")
+            
+        except Exception as e:
+            CTkMessagebox(title="Erreur", 
+                         message=f"Erreur lors de la génération du reçu : {str(e)}", 
+                         icon="cancel")
+    
+    def sort_treeview(self, col):
+        """Trier le treeview en cliquant sur les en-têtes de colonnes"""
+        l = [(self.payment_treeview.set(k, col), k) for k in self.payment_treeview.get_children('')]
+        l.sort(reverse=self.sort_reverse)
+        self.sort_reverse = not self.sort_reverse
+        
+        # Réorganiser les éléments
+        for index, (val, k) in enumerate(l):
+            self.payment_treeview.move(k, '', index)
+    		
+    def create_reports_tab(self, tab):
+        # Rapports et statistiques
+        ctk.CTkLabel(tab, text="Rapports et Statistiques", font=("Arial", 20)).pack(pady=20)
+        
+        # Frame pour les boutons d'export
+        export_frame = ctk.CTkFrame(tab)
+        export_frame.pack(pady=10, fill="x", padx=20)
+        
+        # Frame pour les statistiques
+        stats_frame = ctk.CTkFrame(tab)
+        stats_frame.pack(pady=10, fill="both", expand=True, padx=20)
+        
+        # Boutons d'export
+        export_buttons = [
+            ("Exporter vers Excel", self.export_to_excel),
+            ("Générer PDF", self.generate_pdf),
+            ("Statistiques de paiement", self.show_payment_stats)
+        ]
+        
+        for text, command in export_buttons:
+            ctk.CTkButton(export_frame, text=text, command=command).pack(pady=5, padx=10, fill="x")
+    
+        # Créer un treeview pour afficher les statistiques
+        self.stats_treeview = ttk.Treeview(stats_frame, columns=("Métrique", "Valeur"), show="headings")
+        self.stats_treeview.heading("Métrique", text="Métrique")
+        self.stats_treeview.heading("Valeur", text="Valeur")
+        self.stats_treeview.pack(pady=10, fill="both", expand=True)
+    
+        # Mettre à jour les statistiques
+        self.update_statistics()
+    
+    def export_to_excel(self):
+        try:
+            import pandas as pd
+            from datetime import datetime
+            
+            # Récupérer les données avec plus de détails
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    s.name as "Nom",
+                    s.surname as "Prénom",
+                    s.class as "Niveau",
+                    s.phone_number as "Téléphone",
+                    CASE WHEN s.payment_completed = 1 THEN 'Payé' ELSE 'Non payé' END as "Statut",
+                    s.subjects as "Matières",
+                    s.registration_date as "Date d'inscription",
+                    s.last_payment_date as "Dernier paiement",
+                    s.total_paid as "Total payé"
+                FROM Students s
+            """)
+            
+            # Créer le DataFrame
+            columns = [description[0] for description in cursor.description]
+            df = pd.DataFrame(cursor.fetchall(), columns=columns)
+            
+            # Créer le nom du fichier
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"rapport_eleves_{timestamp}.xlsx"
+            
+            # Créer le dossier 'exports' s'il n'existe pas
+            if not os.path.exists('exports'):
+                os.makedirs('exports')
+            
+            # Chemin complet du fichier
+            filepath = os.path.join('exports', filename)
+            
+            # Exporter vers Excel avec mise en forme
+            with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Étudiants', index=False)
+                
+                # Ajuster la largeur des colonnes
+                worksheet = writer.sheets['Étudiants']
+                for idx, col in enumerate(df.columns):
+                    max_length = max(df[col].astype(str).apply(len).max(),
+                                   len(col)) + 2
+                    worksheet.column_dimensions[chr(65 + idx)].width = max_length
+            
+            CTkMessagebox(title="Succès", 
+                         message=f"Les données ont été exportées vers:\n{filepath}", 
+                         icon="check")
+            
+        except Exception as e:
+            CTkMessagebox(title="Erreur", 
+                         message=f"Erreur lors de l'export: {str(e)}", 
+                         icon="cancel")
+        
+    def generate_pdf(self):
+        try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet
+            
+            # Créer le dossier 'reports' s'il n'existe pas
+            if not os.path.exists('reports'):
+                os.makedirs('reports')
+                
+            # Nom du fichier PDF
+            filename = f"rapport_complet_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            filepath = os.path.join('reports', filename)
+            
+            # Création du document
+            doc = SimpleDocTemplate(filepath, pagesize=letter)
+            styles = getSampleStyleSheet()
+            elements = []
+            
+            # Titre
+            title = Paragraph("Rapport de Gestion des Frais Scolaires", styles['Title'])
+            elements.append(title)
+            elements.append(Spacer(1, 20))
+            
+            # Récupérer les données
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    name, surname, class, phone_number,
+                    CASE WHEN payment_completed = 1 THEN 'Payé' ELSE 'Non payé' END as status,
+                    subjects
+                FROM Students
+            """)
+            
+            data = cursor.fetchall()
+            
+            # Créer le tableau
+            table_data = [['Nom', 'Prénom', 'Niveau', 'Téléphone', 'Statut', 'Matières']] + list(data)
+            t = Table(table_data)
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 14),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 12),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            
+            elements.append(t)
+            
+            # Générer le PDF
+            doc.build(elements)
+            
+            CTkMessagebox(title="Succès", 
+                         message=f"Le rapport PDF a été généré:\n{filepath}", 
+                         icon="check")
+        except Exception as e:
+            CTkMessagebox(title="Erreur", 
+                         message=f"Erreur lors de la génération du PDF: {str(e)}", 
+                         icon="cancel")
+    
+    def show_payment_stats(self):
+        cursor = self.conn.cursor()
+        
+        # Effacer les anciennes statistiques
+        for item in self.stats_treeview.get_children():
+            self.stats_treeview.delete(item)
+        
+        try:
+            # Statistiques générales
+            stats = []
+            
+            # Total des étudiants
+            cursor.execute("SELECT COUNT(*) FROM Students")
+            total_students = cursor.fetchone()[0]
+            stats.append(("Total des étudiants", total_students))
+            
+            # Étudiants avec paiement complet
+            cursor.execute("SELECT COUNT(*) FROM Students WHERE payment_completed = 1")
+            paid_students = cursor.fetchone()[0]
+            stats.append(("Paiements complets", paid_students))
+            
+            # Étudiants avec paiement en attente
+            pending_students = total_students - paid_students
+            stats.append(("Paiements en attente", pending_students))
+            
+            # Taux de paiement
+            if total_students > 0:
+                payment_rate = (paid_students / total_students) * 100
+                stats.append(("Taux de paiement", f"{payment_rate:.1f}%"))
+            
+            # Montant total reçu
+            cursor.execute("SELECT SUM(total_paid) FROM Students")
+            total_amount = cursor.fetchone()[0] or 0
+            stats.append(("Montant total reçu", f"{total_amount:.2f} €"))
+            
+            # Statistiques par niveau
+            cursor.execute("""
+                SELECT class, 
+                       COUNT(*) as total,
+                       SUM(CASE WHEN payment_completed = 1 THEN 1 ELSE 0 END) as paid
+                FROM Students 
+                GROUP BY class
+            """)
+            
+            class_stats = cursor.fetchall()
+            for class_name, total, paid in class_stats:
+                stats.append((f"Classe {class_name} - Total", total))
+                stats.append((f"Classe {class_name} - Payé", paid))
+                if total > 0:
+                    rate = (paid / total) * 100
+                    stats.append((f"Classe {class_name} - Taux", f"{rate:.1f}%"))
+            
+            # Ajouter les statistiques au treeview
+            for metric, value in stats:
+                self.stats_treeview.insert("", "end", values=(metric, str(value)))
+                
+        except sqlite3.Error as e:
+            print(f"Erreur SQL: {e}")
+            self.stats_treeview.insert("", "end", values=("Erreur", str(e)))
+
+    
+    def update_statistics(self):
+        self.show_payment_stats()
+    def generate_financial_report(self):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    SUM(p.amount) as total_collected,
+                    COUNT(DISTINCT s.id) as total_students,
+                    fc.amount as total_expected
+                FROM Payments p
+                JOIN Students s ON p.student_id = s.id
+                CROSS JOIN FeeConfiguration fc
+            """)
+            report = cursor.fetchone()
+
+            if report:
+                total_collected, total_students, total_expected = report
+                report_text = f"""
+                RAPPORT FINANCIER
+                ----------------
+                Total Élèves: {total_students}
+                Total Collecté: {total_collected} €
+                Total Attendu: {total_expected} €
+                Taux de Recouvrement: {(total_collected / total_expected) * 100:.2f}%
+                Date du Rapport: {datetime.now().strftime('%d/%m/%Y')}
+                """
+
+                # Enregistrement du rapport
+                with open('rapport_financier.txt', 'w') as f:
+                    f.write(report_text)
+
+                CTkMessagebox(
+                    title="Rapport Généré",
+                    message="Rapport financier sauvegardé avec succès !",
+                    icon="check"
+                )
+        except Exception as e:
+            CTkMessagebox(
+                title="Erreur",
+                message=f"Erreur de génération : {str(e)}",
+                icon="cancel"
+            )
+
+    def generate_student_list(self):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT name, surname, class FROM Students")
+            students = cursor.fetchall()
+
+            with open('liste_eleves.csv', 'w') as f:
+                f.write("Nom,Prénom,Classe\n")
+                for student in students:
+                    f.write(f"{student[0]},{student[1]},{student[2]}\n")
+
+            CTkMessagebox(
+                title="Liste Générée",
+                message="Liste des élèves exportée en CSV !",
+                icon="check"
+            )
+        except Exception as e:
+            CTkMessagebox(
+                title="Erreur",
+                message=f"Erreur d'exportation : {str(e)}",
+                icon="cancel"
+            )
+
+    def generate_payment_status(self):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    s.name,
+                    s.surname,
+                    s.class,
+                    fc.amount as total_fee,
+                    COALESCE(SUM(p.amount), 0) as paid_amount,
+                    (fc.amount - COALESCE(SUM(p.amount), 0)) as remaining_amount
+                FROM Students s
+                CROSS JOIN FeeConfiguration fc
+                LEFT JOIN Payments p ON s.id = p.student_id
+                GROUP BY s.id
+            """)
+
+            with open('status_paiements.csv', 'w') as f:
+                f.write("Nom,Prénom,Classe,Frais Total,Montant Payé,Reste à Payer\n")
+                for student in cursor.fetchall():
+                    f.write(f"{student[0]},{student[1]},{student[2]},{student[3]},{student[4]},{student[5]}\n")
+
+            CTkMessagebox(
+                title="Statut Généré",
+                message="Statut des paiements exporté !",
+                icon="check"
+            )
+        except Exception as e:
+            CTkMessagebox(
+                title="Erreur",
+                message=f"Erreur de génération : {str(e)}",
+                icon="cancel"
+            )
+
+    def create_required_tables(self):
+        """Crée les tables de la base de données"""
+        try:
+            cursor = self.conn.cursor()
+    
+	
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS LoginHistory (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    email TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    login_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    ip_address TEXT,
+                    FOREIGN KEY(user_id) REFERENCES Users(id)
+                )
+            ''')
+            
+            # Table pour les sessions utilisateurs
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS UserSessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT UNIQUE NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    email TEXT NOT NULL,
+                    start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_activity DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    ip_address TEXT,
+                    active INTEGER DEFAULT 1,
+                    FOREIGN KEY(user_id) REFERENCES Users(id)
+                )
+            ''')
+            # Table Configuration des Frais
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS FeeConfiguration (
+                    id INTEGER PRIMARY KEY,
+                    level TEXT,
+                    amount REAL
+                )
+            ''')
+    
+            # Table des Matières
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Subjects (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    level TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    fee REAL NOT NULL,
+                    UNIQUE(level, name)
+                )
+            ''')
+    
+            # Table École
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS School (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    address TEXT NOT NULL,
+                    phone TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    website TEXT,
+                    director TEXT NOT NULL,
+                    logo_path TEXT,
+                    description TEXT,
+                    academic_year TEXT NOT NULL,
+                    last_updated DATETIME,
+                    created_by TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    modified_by TEXT,
+                    modified_at DATETIME
+                )
+            ''')
+    
+            # Table pour les trimestres - Version corrigée
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS SchoolTerms (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    term_number INTEGER NOT NULL,
+                    start_date TEXT NOT NULL,
+                    end_date TEXT NOT NULL,
+                    academic_year TEXT NOT NULL,
+                    created_by TEXT,
+                    created_at DATETIME,
+                    modified_by TEXT,
+                    modified_at DATETIME,
+                    UNIQUE(term_number, academic_year)
+                )
+            ''')
+    
+            # Table pour les vacances
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS SchoolHolidays (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    start_date TEXT NOT NULL,
+                    end_date TEXT NOT NULL,
+                    academic_year TEXT NOT NULL,
+                    created_by TEXT,
+                    created_at DATETIME,
+                    modified_by TEXT,
+                    modified_at DATETIME
+                )
+            ''')
+    
+            # Table pour les paramètres de notification
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS NotificationSettings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    notification_type TEXT NOT NULL,
+                    enabled BOOLEAN NOT NULL DEFAULT 0,
+                    created_by TEXT,
+                    created_at DATETIME,
+                    modified_by TEXT,
+                    modified_at DATETIME
+                )
+            ''')
+    
+            # Table Élèves
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Students (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    surname TEXT NOT NULL,
+                    birth_date TEXT,
+                    gender TEXT,
+                    address TEXT,
+                    class TEXT NOT NULL,
+                    phone_number TEXT,
+                    parent_name TEXT,
+                    parent_phone TEXT,
+                    email TEXT,
+                    registration_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                    photo_path TEXT,
+                    subjects TEXT,
+                    total_fee REAL DEFAULT 0,
+                    total_paid REAL DEFAULT 0,
+                    last_payment_date TEXT,
+                    payment_completed INTEGER DEFAULT 0
+                )
+            ''')
+    
+            # Table Paiements
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Payments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    student_id INTEGER,
+                    amount REAL NOT NULL,
+                    payment_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                    payment_method TEXT,
+                    notes TEXT,
+                    FOREIGN KEY(student_id) REFERENCES Students(id)
+                )
+            ''')
+    
+            # Table pour les documents des étudiants
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS StudentDocuments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    student_id INTEGER,
+                    document_type TEXT NOT NULL,
+                    file_path TEXT NOT NULL,
+                    uploaded_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(student_id) REFERENCES Students(id)
+                )
+            ''')
+    
+            # Table pour l'historique des modifications
+            self.cursor.execute('''
+                CREATE TABLE IF NOT EXISTS AuditLog (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    table_name TEXT NOT NULL,
+                    record_id INTEGER NOT NULL,
+                    action TEXT NOT NULL,
+                    user_login TEXT NOT NULL,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    old_values TEXT,
+                    new_values TEXT
+                )
+            ''')
+    
+            self.conn.commit()
+            logging.info("Tables créées avec succès")
+    
+        except sqlite3.Error as e:
+            logging.error(f"Erreur lors de la création des tables: {e}")
+            self.conn.rollback()
+            raise
+		
+		
+def main():
+    root = ctk.CTk()
+    app = LoginWindow(root)
+    root.mainloop()
+	
+if __name__ == "__main__":
+    main()
